@@ -24,6 +24,14 @@ module.exports = {
                 typedefs: false,
             },
         ],
+        "@typescript-eslint/ban-types": [
+            "error",
+            {
+                types: {
+                    Function: false
+                }
+            }
+        ],
         "object-curly-spacing": ["error", "always"],
         quotes: ["error", "double", { avoidEscape: true }],
         "comma-dangle": ["error", "always-multiline"],
