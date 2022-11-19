@@ -4,8 +4,6 @@ export enum RunMode {
     Create = "create",
 }
 
-export type DumpsDirCallback = (test: Hermione.Test) => string;
-
 export interface DumpResponse {
     body: string;
     headers: Record<string, string>;

@@ -25,12 +25,19 @@ export const booleanOption = (name: string, defaultValue: boolean): Parser<boole
         validate: assertType<boolean>(name, _.isBoolean, "boolean"),
     });
 
-export const stringOrFunctionOption = (name: string, defaultValue: string | Function): Parser<string | Function> =>
-    option<string | Function>({
+export const stringOrFunctionOption = (
+    name: string,
+    defaultValue: string | ((test: Hermione.Test) => string),
+): Parser<string | ((test: Hermione.Test) => string)> =>
+    option<string | ((test: Hermione.Test) => string)>({
         parseEnv: JSON.parse,
         parseCli: JSON.parse,
         defaultValue,
-        validate: assertType<string | Function>(name, isStringOrFunction, "string or Function"),
+        validate: assertType<string | ((test: Hermione.Test) => string)>(
+            name,
+            isStringOrFunction, // eslint-disable-line indent
+            "string or Function", // eslint-disable-line indent
+        ),
     });
 
 const validateRunMode = (name: string): ((v: string) => void) => {

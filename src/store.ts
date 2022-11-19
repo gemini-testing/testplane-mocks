@@ -3,10 +3,14 @@ import path from "path";
 import _ from "lodash";
 
 import type { WorkersRunner } from "./workers/worker";
-import type { Dump, DumpResponse, DumpsDirCallback } from "./types";
+import type { Dump, DumpResponse } from "./types";
 
 export class Store {
-    static create(dumpsDir: string | DumpsDirCallback, workersRunner: WorkersRunner, test: Hermione.Test): Store {
+    static create(
+        dumpsDir: string | ((test: Hermione.Test) => string),
+        workersRunner: WorkersRunner,
+        test: Hermione.Test,
+    ): Store {
         return new this(dumpsDir, workersRunner, test);
     }
 
@@ -14,7 +18,7 @@ export class Store {
     private queryCounter: Map<string, number> | null = null;
 
     constructor(
-        private dumpsDir: string | DumpsDirCallback,
+        private dumpsDir: string | ((test: Hermione.Test) => string),
         private workersRunner: WorkersRunner,
         private test: Hermione.Test,
     ) {}
@@ -67,7 +71,7 @@ export class Store {
         const fileNameString = `${this.test.fullTitle()}#${this.test.browserId}`;
         const base64 = createHash("md5").update(fileNameString, "ascii").digest("base64");
 
-        return base64.slice(0, -2).replace("/", "#") + ".json";
+        return base64.slice(0, 8).replace("/", "#") + ".json";
     }
 
     private getResponseHash({ responseCode, body, headers }: DumpResponse): string {

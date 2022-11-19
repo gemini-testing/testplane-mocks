@@ -1,7 +1,10 @@
-import { Page, Target } from "puppeteer-core";
+import type { Target, Page } from "puppeteer-core";
+import { BrowserContextEmittedEvents } from "puppeteer-core";
+import _ from "lodash";
 import PQueue from "p-queue";
 import os from "os";
 
+import { TARGET_PAGE } from "./constants";
 import { createWorkersRunner } from "./workers";
 import { Store } from "./store";
 import { parseConfig } from "./config";
@@ -12,7 +15,7 @@ import type { WorkersRunner } from "./workers/worker";
 export = (hermione: Hermione, opts: PluginConfig): void => {
     const config = parseConfig(opts, hermione.config);
 
-    if (!config.enabled || hermione.isWorker()) {
+    if (!config.enabled || hermione.isWorker() || _.isEmpty(config.browsers)) {
         return;
     }
 
@@ -27,7 +30,7 @@ export = (hermione: Hermione, opts: PluginConfig): void => {
 
         const target = page.target();
 
-        if (target.type() !== "page") {
+        if (target.type() !== TARGET_PAGE) {
             return;
         }
 
@@ -67,7 +70,7 @@ export = (hermione: Hermione, opts: PluginConfig): void => {
             }),
         );
 
-        puppeteer.on("targetcreated", async (target: Target) => {
+        puppeteer.on(BrowserContextEmittedEvents.TargetCreated, async (target: Target) => {
             const page = await target.page();
 
             if (!page) {
@@ -88,7 +91,7 @@ export = (hermione: Hermione, opts: PluginConfig): void => {
         stores.set(test.sessionId, newStore);
     });
 
-    hermione.on(hermione.events.TEST_PASS, ({ browserId, sessionId }) => {
+    hermione.on(hermione.events.TEST_END, ({ browserId, sessionId }) => {
         if (!config.browsers.includes(browserId)) {
             return;
         }
@@ -103,14 +106,6 @@ export = (hermione: Hermione, opts: PluginConfig): void => {
             },
             config.mode,
         );
-    });
-
-    hermione.on(hermione.events.TEST_FAIL, ({ browserId, sessionId }) => {
-        if (!config.browsers.includes(browserId)) {
-            return;
-        }
-
-        stores.delete(sessionId);
     });
 
     hermione.on(hermione.events.RUNNER_END, () => queue.onIdle());
