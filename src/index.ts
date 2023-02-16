@@ -4,7 +4,8 @@ import _ from "lodash";
 import PQueue from "p-queue";
 import os from "os";
 
-import { TARGET_PAGE } from "./constants";
+import HermioneMocksError from "./hermioneMocksError";
+import { TARGET_PAGE, TEST_MOCKS_ERROR } from "./constants";
 import { createWorkersRunner } from "./workers";
 import { Store } from "./store";
 import { parseConfig } from "./config";
@@ -71,13 +72,20 @@ export = (hermione: Hermione, opts: PluginConfig): void => {
         );
 
         puppeteer.on(BrowserContextEmittedEvents.TargetCreated, async (target: Target) => {
-            const page = await target.page();
+            try {
+                const page = await target.page();
 
-            if (!page) {
-                return;
+                if (!page) {
+                    return;
+                }
+
+                await attachTarget(page, sessionId);
+            } catch {
+                const test = stores.get(sessionId)!.currentTest;
+                const err = new HermioneMocksError('Puppeteer couldn\'t create CDP session');
+
+                _.set(test, TEST_MOCKS_ERROR, _.get(test, TEST_MOCKS_ERROR, err));
             }
-
-            await attachTarget(page, sessionId);
         });
     });
 
@@ -90,6 +98,18 @@ export = (hermione: Hermione, opts: PluginConfig): void => {
 
         stores.set(test.sessionId, newStore);
     });
+
+    hermione.intercept(hermione.events.TEST_PASS, ({data}) => {
+        return _.get(data, TEST_MOCKS_ERROR) && {event: hermione.events.TEST_FAIL, data};
+    });
+
+    hermione.intercept(hermione.events.TEST_FAIL, (({data}) => {
+        if (_.get(data, TEST_MOCKS_ERROR)) {
+            const test = data as Hermione.Test;
+    
+            test.err = _.get(data, TEST_MOCKS_ERROR);
+        }
+    }));
 
     hermione.on(hermione.events.TEST_END, ({ browserId, sessionId }) => {
         if (!config.browsers.includes(browserId)) {

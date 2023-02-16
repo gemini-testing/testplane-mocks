@@ -23,6 +23,10 @@ export class Store {
         private test: Hermione.Test,
     ) {}
 
+    public get currentTest() {
+        return this.test;
+    }
+
     public async saveDump(opts: { overwrite: boolean }): Promise<void> {
         const dumpPath = this.getDumpPath();
 
@@ -40,9 +44,9 @@ export class Store {
         }
 
         const ind = this.getResponseIndex(hashKey);
-        const requestId = this.dump.requests[hashKey][ind];
+        const requestId = this.dump?.requests?.[hashKey]?.[ind];
 
-        return this.dump.responses[requestId];
+        return requestId && this.dump.responses?.[requestId] || null;
     }
 
     public set(hashKey: string, response: DumpResponse): void {
@@ -70,8 +74,7 @@ export class Store {
     private getFileName(): string {
         const fileNameString = `${this.test.fullTitle()}#${this.test.browserId}`;
         const base64 = createHash("md5").update(fileNameString, "ascii").digest("base64");
-
-        return base64.slice(0, 8).replace("/", "#") + ".json";
+        return base64.slice(0, 8).replace(/\//g, "#") + ".json";
     }
 
     private getResponseHash({ responseCode, body, headers }: DumpResponse): string {

@@ -1,5 +1,8 @@
+import _ from "lodash";
 import type { CDPSession } from "puppeteer-core";
 
+import HermioneMocksError from "../hermioneMocksError";
+import { TEST_MOCKS_ERROR } from "../constants";
 import { mkRequestXHRInterceptor } from "../cdp";
 import { Store } from "../store";
 
@@ -16,7 +19,9 @@ export async function readMode(session: CDPSession, patterns: string[], getStore
                 ...dumpResponse,
             });
         } else {
-            console.error(`Cache is empty:\nkey=${request.url}`);
+            const err = new HermioneMocksError(`Cache is empty:\nkey=${request.url}`);
+
+            _.set(store.currentTest, TEST_MOCKS_ERROR, err);
         }
     });
 
