@@ -1,4 +1,5 @@
 import path from "path";
+import type Hermione from "hermione";
 import { Store } from "./store";
 import { Dump, DumpResponse } from "./types";
 import { WorkersRunner } from "./workers/worker";
@@ -90,8 +91,17 @@ describe("store", () => {
     });
 
     describe("saveDump", () => {
+        it("should not save empty dump", async () => {
+            const store = createStore_();
+
+            await store.saveDump({ overwrite: false });
+
+            expect(workersRunner.writeDump).not.toBeCalled();
+        });
+
         it("should save dump", async () => {
             const store = createStore_();
+            store.set("foo", { body: "bar", headers: {}, responseCode: 200 });
 
             await store.saveDump({ overwrite: false });
 
@@ -100,22 +110,47 @@ describe("store", () => {
 
         it("should overwrite existing dump if overwrite is set", async () => {
             const store = createStore_();
+            store.set("foo", { body: "bar", headers: {}, responseCode: 200 });
 
             await store.saveDump({ overwrite: true });
 
-            expect(workersRunner.writeDump).toBeCalledWith(expect.anything(), undefined, true);
+            expect(workersRunner.writeDump).toBeCalledWith(expect.anything(), expect.anything(), true);
         });
 
         it("should not overwrite existing dump if overwrite is not set", async () => {
             const store = createStore_();
+            store.set("foo", { body: "bar", headers: {}, responseCode: 200 });
 
             await store.saveDump({ overwrite: false });
 
-            expect(workersRunner.writeDump).toBeCalledWith(expect.anything(), undefined, false);
+            expect(workersRunner.writeDump).toBeCalledWith(expect.anything(), expect.anything(), false);
         });
     });
 
     describe("get", () => {
+        describe("should return null", () => {
+            it("if dump is empty", async () => {
+                workersRunner.readDump = jest.fn().mockResolvedValue({});
+                const store = createStore_();
+
+                await expect(store.get("testUrl")).resolves.toBe(null);
+            });
+
+            it("if request is not stored", async () => {
+                const store = createStore_();
+
+                await expect(store.get("notStoredUrl")).resolves.toBe(null);
+            });
+
+            it("if request with current index is not stored", async () => {
+                const store = createStore_();
+
+                await store.get("testUrl");
+                await store.get("testUrl");
+                await expect(store.get("testUrl")).resolves.toBe(null);
+            });
+        });
+
         it("should load dump on first call", async () => {
             const store = createStore_();
 
@@ -175,6 +210,15 @@ describe("store", () => {
 
             await store.saveDump({ overwrite: false });
             expect(workersRunner.writeDump).toBeCalledWith(expect.anything(), expectingDump, false);
+        });
+    });
+
+    describe("currentTest", () => {
+        it("should return current test", () => {
+            const test = {} as Hermione.Test;
+            const store = createStore_({ test });
+
+            expect(store.currentTest).toBe(test);
         });
     });
 });

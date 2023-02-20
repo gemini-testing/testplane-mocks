@@ -1,5 +1,8 @@
+import _ from "lodash";
 import type { CDPSession } from "puppeteer-core";
 
+import HermioneMocksError from "../hermioneMocksError";
+import { TEST_MOCKS_ERROR } from "../constants";
 import { mkResponseXHRInterceptor, normalizeHeaders } from "../cdp";
 import { Store } from "../store";
 
@@ -8,20 +11,28 @@ export async function writeMode(session: CDPSession, patterns: string[], getStor
 
     responseInterceptor.listen(async ({ requestId, request, responseHeaders, responseStatusCode }, api) => {
         const store = getStore();
-        const rawBody = await api.getRealResponse(requestId);
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        const responseCode = responseStatusCode!;
-        const headers = normalizeHeaders(responseHeaders);
-        const body = rawBody.toString("binary");
 
-        await store.set(request.url, { responseCode, headers, body });
+        try {
+            const rawBody = await api.getRealResponse(requestId);
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            const responseCode = responseStatusCode!;
+            const headers = normalizeHeaders(responseHeaders);
+            const body = rawBody.toString("binary");
 
-        await api.respondWithMock({
-            requestId,
-            responseCode,
-            headers,
-            body,
-        });
+            store.set(request.url, { responseCode, headers, body });
+
+            await api.respondWithMock({
+                requestId,
+                responseCode,
+                headers,
+                body,
+            });
+        } catch (err: unknown) {
+            const errMessage = (err as Error).message;
+            const error = _.get(store.currentTest, TEST_MOCKS_ERROR, new HermioneMocksError(errMessage));
+
+            _.set(store.currentTest, TEST_MOCKS_ERROR, error);
+        }
     });
 
     await responseInterceptor.enable();

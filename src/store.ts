@@ -23,15 +23,17 @@ export class Store {
         private test: Hermione.Test,
     ) {}
 
-    public get currentTest() {
+    public get currentTest(): Hermione.Test {
         return this.test;
     }
 
     public async saveDump(opts: { overwrite: boolean }): Promise<void> {
         const dumpPath = this.getDumpPath();
 
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        await this.workersRunner.writeDump(dumpPath, this.dump!, opts.overwrite);
+        if (this.dump) {
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            await this.workersRunner.writeDump(dumpPath, this.dump!, opts.overwrite);
+        }
 
         delete this.dump;
     }
@@ -44,9 +46,9 @@ export class Store {
         }
 
         const ind = this.getResponseIndex(hashKey);
-        const requestId = this.dump?.requests?.[hashKey]?.[ind];
+        const requestId = this.dump.requests?.[hashKey]?.[ind];
 
-        return requestId && this.dump.responses?.[requestId] || null;
+        return (requestId && this.dump.responses[requestId]) || null;
     }
 
     public set(hashKey: string, response: DumpResponse): void {

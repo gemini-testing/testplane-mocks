@@ -5,4 +5,4 @@ export default class HermioneMocksError extends Error {
         this.name = this.constructor.name;
         this.message = message;
     }
-};
+}

@@ -46,6 +46,7 @@
         "@typescript-eslint/parser": "^4.29.3",
         "eslint": "^7.32.0",
         "eslint-config-gemini-testing": "^3.0.0",
+        "hermione": ">=4.0.0",
         "jest": "^27.0.6",
         "prettier": "^2.3.2",
         "puppeteer-core": "^13.7.0",

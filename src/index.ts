@@ -80,11 +80,15 @@ export = (hermione: Hermione, opts: PluginConfig): void => {
                 }
 
                 await attachTarget(page, sessionId);
-            } catch {
+            } catch (originalError: unknown) {
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                 const test = stores.get(sessionId)!.currentTest;
-                const err = new HermioneMocksError('Puppeteer couldn\'t create CDP session');
+                const originalErrorMessage = (originalError as Error).message;
+                const error = new HermioneMocksError(
+                    `Puppeteer couldn't create CDP session (original error: ${originalErrorMessage})`,
+                );
 
-                _.set(test, TEST_MOCKS_ERROR, _.get(test, TEST_MOCKS_ERROR, err));
+                _.set(test, TEST_MOCKS_ERROR, _.get(test, TEST_MOCKS_ERROR, error));
             }
         });
     });
@@ -99,17 +103,17 @@ export = (hermione: Hermione, opts: PluginConfig): void => {
         stores.set(test.sessionId, newStore);
     });
 
-    hermione.intercept(hermione.events.TEST_PASS, ({data}) => {
-        return _.get(data, TEST_MOCKS_ERROR) && {event: hermione.events.TEST_FAIL, data};
+    hermione.intercept(hermione.events.TEST_PASS, ({ data }) => {
+        return _.get(data, TEST_MOCKS_ERROR) && { event: hermione.events.TEST_FAIL, data };
     });
 
-    hermione.intercept(hermione.events.TEST_FAIL, (({data}) => {
+    hermione.intercept(hermione.events.TEST_FAIL, ({ data }) => {
         if (_.get(data, TEST_MOCKS_ERROR)) {
             const test = data as Hermione.Test;
-    
+
             test.err = _.get(data, TEST_MOCKS_ERROR);
         }
-    }));
+    });
 
     hermione.on(hermione.events.TEST_END, ({ browserId, sessionId }) => {
         if (!config.browsers.includes(browserId)) {

@@ -1,8 +1,12 @@
+import _ from "lodash";
+
 import { Store } from "../store";
 import { readMode } from ".";
 import type { CDPSession } from "puppeteer-core";
 import type { ApiType } from "../cdp/interceptor";
 import type { FetchEvent } from "../cdp/types";
+import HermioneMocksError from "../hermioneMocksError";
+import { TEST_MOCKS_ERROR } from "../constants";
 
 interface MockedXHRInterceptor {
     handler?: (event: FetchEvent, api: ApiType) => Promise<void>;
@@ -17,28 +21,20 @@ const mockedXHRInterceptor: MockedXHRInterceptor = {
     },
 };
 
-const mockedStore = {
-    get: jest.fn(),
-} as unknown as Store;
+let mockedStore: Store;
 
 jest.mock("../cdp", () => ({
     mkRequestXHRInterceptor: () => mockedXHRInterceptor,
 }));
 
 describe("modes/readMode", () => {
-    let savedConsoleError: () => void;
-
-    beforeAll(() => {
-        savedConsoleError = console.error;
-        console.error = jest.fn();
-    });
-
     beforeEach(async () => {
-        await readMode({} as CDPSession, [], () => mockedStore);
-    });
+        mockedStore = {
+            get: jest.fn(),
+            currentTest: {},
+        } as unknown as Store;
 
-    afterAll(() => {
-        console.error = savedConsoleError;
+        await readMode({} as CDPSession, [], () => mockedStore);
     });
 
     it("should enable XHR interceptor", async () => {
@@ -68,10 +64,10 @@ describe("modes/readMode", () => {
             expect(mockedStore.get).toBeCalledWith("url");
         });
 
-        it("should print error in console if dump does not exist", async () => {
+        it("should set error if dump does not exist", async () => {
             await handle_({ requestUrl: "url" });
 
-            expect(console.error).toBeCalledWith("Cache is empty:\nkey=url");
+            expect(_.get(mockedStore.currentTest, TEST_MOCKS_ERROR)).toBeInstanceOf(HermioneMocksError);
         });
 
         it("should respond with mock", async () => {
