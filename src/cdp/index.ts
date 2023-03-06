@@ -1,14 +1,15 @@
 import type { CDPSession, Protocol } from "puppeteer-core";
 
 import { CdpInterceptor } from "./interceptor";
-import { FetchResourceType, FetchInterceptionStage } from "./types";
+import { FetchInterceptionStage } from "./types";
 import type { Headers } from "./types";
+import type { MocksPattern } from "../types";
 
-export const mkRequestXHRInterceptor = (session: CDPSession, patterns: string[]): CdpInterceptor =>
-    new CdpInterceptor(session, FetchResourceType.XHR, FetchInterceptionStage.Request, patterns);
+export const mkRequestXHRInterceptor = (session: CDPSession, patterns: MocksPattern[]): CdpInterceptor =>
+    new CdpInterceptor(session, patterns, FetchInterceptionStage.Request);
 
-export const mkResponseXHRInterceptor = (session: CDPSession, patterns: string[]): CdpInterceptor =>
-    new CdpInterceptor(session, FetchResourceType.XHR, FetchInterceptionStage.Response, patterns);
+export const mkResponseXHRInterceptor = (session: CDPSession, patterns: MocksPattern[]): CdpInterceptor =>
+    new CdpInterceptor(session, patterns, FetchInterceptionStage.Response);
 
 export function normalizeHeaders(headers: Array<Protocol.Fetch.HeaderEntry> | undefined = []): Record<string, string> {
     return headers.reduce((table, { name, value }) => {

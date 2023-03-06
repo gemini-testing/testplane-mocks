@@ -5,18 +5,19 @@ import HermioneMocksError from "../hermioneMocksError";
 import { TEST_MOCKS_ERROR } from "../constants";
 import { mkResponseXHRInterceptor, normalizeHeaders } from "../cdp";
 import { Store } from "../store";
+import { MocksPattern } from "../types";
 
-export async function writeMode(session: CDPSession, patterns: string[], getStore: () => Store): Promise<void> {
+export async function writeMode(session: CDPSession, patterns: MocksPattern[], getStore: () => Store): Promise<void> {
     const responseInterceptor = mkResponseXHRInterceptor(session, patterns);
 
     responseInterceptor.listen(async ({ requestId, request, responseHeaders, responseStatusCode }, api) => {
         const store = getStore();
 
         try {
-            const rawBody = await api.getRealResponse(requestId);
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             const responseCode = responseStatusCode!;
             const headers = normalizeHeaders(responseHeaders);
+            const rawBody = await api.getRealResponse(requestId);
             const body = rawBody.toString("binary");
 
             store.set(request.url, { responseCode, headers, body });

@@ -1,7 +1,8 @@
-import { CDPSession } from "puppeteer-core";
+import type { CDPSession } from "puppeteer-core";
+import type { MocksPattern } from "../types";
 import { CdpInterceptor } from "./interceptor";
 import { mkRequestXHRInterceptor, mkResponseXHRInterceptor, normalizeHeaders, createResponseHeaders } from ".";
-import { FetchInterceptionStage, FetchResourceType } from "./types";
+import { FetchInterceptionStage } from "./types";
 
 jest.mock("./interceptor", () => ({
     CdpInterceptor: jest.fn(),
@@ -16,30 +17,20 @@ describe("cdp", () => {
 
     it("should create request XHR Interceptor", () => {
         const session = {} as CDPSession;
-        const patterns: string[] = [];
+        const patterns: MocksPattern[] = [];
 
         mkRequestXHRInterceptor(session, patterns);
 
-        expect(mockedInterceptor).toHaveBeenLastCalledWith(
-            session,
-            FetchResourceType.XHR,
-            FetchInterceptionStage.Request,
-            patterns,
-        );
+        expect(mockedInterceptor).toHaveBeenLastCalledWith(session, patterns, FetchInterceptionStage.Request);
     });
 
     it("should create response XHR Interceptor", () => {
         const session = {} as CDPSession;
-        const patterns: string[] = [];
+        const patterns: MocksPattern[] = [];
 
         mkResponseXHRInterceptor(session, patterns);
 
-        expect(mockedInterceptor).toHaveBeenLastCalledWith(
-            session,
-            FetchResourceType.XHR,
-            FetchInterceptionStage.Response,
-            patterns,
-        );
+        expect(mockedInterceptor).toHaveBeenLastCalledWith(session, patterns, FetchInterceptionStage.Response);
     });
 
     describe("normalizeHeaders", () => {

@@ -1,11 +1,44 @@
 import { option, Parser } from "gemini-configparser";
 import _ from "lodash";
 
-import { RunMode } from "../types";
+import { SUPPORTED_RESOURCE_TYPES } from "../constants";
+import { RunMode, MocksPattern } from "../types";
 
 const isStringOrFunction = (val: unknown): boolean => _.isString(val) || _.isFunction(val);
 const isRunModeOption = (val: unknown): boolean => Object.values(RunMode).includes(val as RunMode);
 const isStringArray = (val: unknown): boolean => _.isArray(val) && val.every(_.isString);
+const isMocksPatternObject = (val: unknown): boolean => {
+    if (!_.isPlainObject(val)) {
+        throw new TypeError(`patterns item must be an object, but got ${typeof val}`);
+    }
+
+    const pattern = val as MocksPattern;
+
+    if (!_.isString(pattern.url)) {
+        throw new TypeError(`patterns[].url must be a string, but got ${typeof pattern.url}`);
+    }
+
+    if (pattern.resources === "*") {
+        return true;
+    }
+
+    if (!_.isArray(pattern.resources) || !pattern.resources.every(_.isString)) {
+        throw new TypeError(
+            `patterns[].resources must be a '*' or array of strings, but got ${typeof pattern.resources}`,
+        );
+    }
+
+    pattern.resources.forEach(resource => {
+        if (!SUPPORTED_RESOURCE_TYPES.includes(resource)) {
+            const availableResourceTypes = SUPPORTED_RESOURCE_TYPES.map(type => `"${type}"`).join(" ");
+
+            throw new TypeError(`${resource} is not a valid resource. Available options: [${availableResourceTypes}]`);
+        }
+    });
+
+    return true;
+};
+const isPatternsOption = (val: unknown): boolean => _.isArray(val) && val.every(isMocksPatternObject);
 
 const assertType = <T>(name: string, validationFn: (v: unknown) => boolean, type: string) => {
     return (v: T) => {
@@ -59,5 +92,14 @@ export function arrayStringOption(name: string, defaultValue: string[]): Parser<
         parseCli: JSON.parse,
         defaultValue,
         validate: assertType<string[]>(name, isStringArray, "array of strings"),
+    });
+}
+
+export function mocksPatternsOption(name: string, defaultValue: MocksPattern[]): Parser<MocksPattern[]> {
+    return option<MocksPattern[]>({
+        parseEnv: JSON.parse,
+        parseCli: JSON.parse,
+        defaultValue,
+        validate: assertType<MocksPattern[]>(name, isPatternsOption, "array of objects"),
     });
 }

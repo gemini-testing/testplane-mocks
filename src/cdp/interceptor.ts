@@ -1,9 +1,11 @@
 import btoa from "btoa";
 import type { CDPSession, Protocol } from "puppeteer-core";
 
-import type { FetchEvent, Headers } from "./types";
 import { FetchInterceptionStage } from "./types";
 import { createResponseHeaders } from ".";
+import type { FetchEvent, Headers } from "./types";
+import type { MocksPattern } from "../types";
+import { SUPPORTED_RESOURCE_TYPES } from "../constants";
 
 type RespondWithMockParams = {
     requestId: string;
@@ -21,19 +23,26 @@ export type ApiType = {
 export class CdpInterceptor {
     constructor(
         protected readonly session: CDPSession,
-        private readonly type: Protocol.Network.ResourceType,
+        private readonly patterns: MocksPattern[],
         private readonly stage: FetchInterceptionStage,
-        private readonly patterns: Array<string>,
     ) {}
 
     public async enable(): Promise<void> {
-        await this.session.send("Fetch.enable", {
-            patterns: this.patterns.map(pattern => ({
-                urlPattern: pattern,
-                requestStage: this.stage,
-                resourceType: this.type,
-            })),
+        const patterns: Protocol.Fetch.RequestPattern[] = [];
+
+        this.patterns.forEach(({ url: urlPattern, resources }) => {
+            const resourceTypes = resources === "*" ? SUPPORTED_RESOURCE_TYPES : resources;
+
+            resourceTypes.forEach(resourceType =>
+                patterns.push({
+                    resourceType,
+                    urlPattern,
+                    requestStage: this.stage,
+                }),
+            );
         });
+
+        await this.session.send("Fetch.enable", { patterns });
     }
 
     public listen(handler: (event: FetchEvent, api: ApiType) => Promise<void>): void {

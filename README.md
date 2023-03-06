@@ -1,6 +1,6 @@
 # hermione-mocks
 
-A [hermione](https://github.com/gemini-testing/hermione) plugin that allows you to save/read data dumps from XHR requests. 
+A [hermione](https://github.com/gemini-testing/hermione) plugin that allows you to save/read data dumps from network requests. 
 
 This can increase the stability of tests, allows testing time-dependent scenarios, and reduces the load on the server.
 
@@ -15,7 +15,7 @@ npm install hermione-mocks --save-dev
 ## Usage
 
 * **enabled** (optional) `Boolean` – enable/disable the plugin. By default plugin is disabled;
-* **hostsPatterns** (optional) `String[]` - patterns for hosts to intercept requests (example - `https://www.npmjs.com/*`). By default, `baseUrl` + `*` from hermione config is used. (example - `https://www.npmjs.com/*`, if your baseUrl is example - `https://www.npmjs.com/`)
+* **patterns** (optional) `{url: string, resources: string[] | "*"}[]` - array of objects with `url` for host and `resources` - array of [resource types](https://chromedevtools.github.io/devtools-protocol/tot/Network/#type-ResourceType) to intercept.
 * **browsers** (optional) `string[]` - array of `browserId` (from hermione config) to intercept requests for. Each of them should be using chrome-devtools protocol. Default - `[]`
 * **mode** (optional) `"play" | "save" | "create"` - plugin's mode. Default - `"save"`. Available modes:
    - `"play"`: Reads dumps from fs (dumps should exist) 
@@ -36,7 +36,16 @@ module.exports = {
     plugins: {
         'hermione-mocks': {
             enabled: true,
-            hostsPatterns: ["https://www.npmjs.com/*"],
+            patterns: [
+                {
+                    url: "https://www.npmjs.com/*",
+                    resources: ["Document", "Stylesheet", "Image", "Media", "Script", "XHR", "Fetch"]
+                },
+                {
+                    url: "https://www.github.com/*",
+                    resources: "*"
+                }
+            ]
             browsers: ["chrome"],
             mode: "save",
             dumpsDir: "hermione-dumps"

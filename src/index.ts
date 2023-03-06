@@ -14,7 +14,7 @@ import type { PluginConfig } from "./config";
 import type { WorkersRunner } from "./workers/worker";
 
 export = (hermione: Hermione, opts: PluginConfig): void => {
-    const config = parseConfig(opts, hermione.config);
+    const config = parseConfig(opts);
 
     if (!config.enabled || hermione.isWorker() || _.isEmpty(config.browsers)) {
         return;
@@ -41,9 +41,9 @@ export = (hermione: Hermione, opts: PluginConfig): void => {
 
         await useModes(
             {
-                onPlay: () => readMode(session, config.hostsPatterns, getStore),
-                onCreate: () => writeMode(session, config.hostsPatterns, getStore),
-                onSave: () => writeMode(session, config.hostsPatterns, getStore),
+                onPlay: () => readMode(session, config.patterns, getStore),
+                onCreate: () => writeMode(session, config.patterns, getStore),
+                onSave: () => writeMode(session, config.patterns, getStore),
             },
             config.mode,
         );

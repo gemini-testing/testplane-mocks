@@ -1,3 +1,5 @@
+import type { Protocol } from "puppeteer-core";
+
 export enum RunMode {
     Play = "play",
     Save = "save",
@@ -17,4 +19,9 @@ export interface Dump {
     responses: {
         [responseId: string]: DumpResponse;
     };
+}
+
+export interface MocksPattern {
+    url: string;
+    resources: Protocol.Network.ResourceType[] | "*";
 }
