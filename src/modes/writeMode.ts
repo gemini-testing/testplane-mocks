@@ -1,11 +1,18 @@
 import _ from "lodash";
 import type { CDPSession } from "puppeteer-core";
+import { NO_CONTENT, RESET_CONTENT, MOVED_PERMANENTLY, FOUND, NOT_MODIFIED } from "http-codes";
 
 import HermioneMocksError from "../hermioneMocksError";
 import { TEST_MOCKS_ERROR } from "../constants";
 import { mkResponseXHRInterceptor, normalizeHeaders } from "../cdp";
 import { Store } from "../store";
 import { MocksPattern } from "../types";
+
+function hasNoBody(statusCode: number): boolean {
+    const isInformational = statusCode >= 100 && statusCode < 200;
+
+    return isInformational || [NO_CONTENT, RESET_CONTENT, MOVED_PERMANENTLY, FOUND, NOT_MODIFIED].includes(statusCode);
+}
 
 export async function writeMode(session: CDPSession, patterns: MocksPattern[], getStore: () => Store): Promise<void> {
     const responseInterceptor = mkResponseXHRInterceptor(session, patterns);
@@ -17,8 +24,9 @@ export async function writeMode(session: CDPSession, patterns: MocksPattern[], g
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             const responseCode = responseStatusCode!;
             const headers = normalizeHeaders(responseHeaders);
-            const rawBody = await api.getRealResponse(requestId);
-            const body = rawBody.toString("binary");
+            const body = hasNoBody(responseCode)
+                ? ""
+                : await api.getRealResponse(requestId).then(res => res.toString("binary"));
 
             store.set(request.url, { responseCode, headers, body });
 

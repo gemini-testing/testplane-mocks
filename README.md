@@ -15,7 +15,9 @@ npm install hermione-mocks --save-dev
 ## Usage
 
 * **enabled** (optional) `Boolean` – enable/disable the plugin. By default plugin is disabled;
-* **patterns** (optional) `{url: string, resources: string[] | "*"}[]` - array of objects with `url` for host and `resources` - array of [resource types](https://chromedevtools.github.io/devtools-protocol/tot/Network/#type-ResourceType) to intercept.
+* **patterns** (optional) `{url: string, resources: string[] | "*"}[]`:
+  - `url` (`string`) - A url pattern of mocking host. Example - "https://nodejs.org/*"
+  - `resources` (`"*"` | `string[]`) - An array of resource types to be mocked. Supported resource types: `"Document", "Stylesheet", "Image", "Media", "Script", "XHR", "Fetch"`. You can also use "*" instead of array, it will work the same way as array of all mentioned resource types
 * **browsers** (optional) `string[]` - array of `browserId` (from hermione config) to intercept requests for. Each of them should be using chrome-devtools protocol. Default - `[]`
 * **mode** (optional) `"play" | "save" | "create"` - plugin's mode. Default - `"save"`. Available modes:
    - `"play"`: Reads dumps from fs (dumps should exist) 

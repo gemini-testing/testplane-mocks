@@ -39,6 +39,7 @@
     "homepage": "https://github.com/gemini-testing/hermione-mocks#readme",
     "devDependencies": {
         "@types/btoa": "^1.2.3",
+        "@types/http-codes": "^1.0.2",
         "@types/jest": "^27.0.1",
         "@types/lodash": "^4.14.172",
         "@types/node": "^12.20.19",
@@ -58,6 +59,7 @@
     "dependencies": {
         "btoa": "^1.2.1",
         "gemini-configparser": "^1.1.0",
+        "http-codes": "^1.0.0",
         "lodash": "^4.17.21",
         "p-queue": "^6.6.2"
     },

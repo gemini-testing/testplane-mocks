@@ -1,6 +1,8 @@
+import { CONTINUE, NO_CONTENT, RESET_CONTENT, MOVED_PERMANENTLY, FOUND, NOT_MODIFIED } from "http-codes";
+import type { CDPSession } from "puppeteer-core";
+
 import { Store } from "../store";
 import { writeMode } from ".";
-import type { CDPSession } from "puppeteer-core";
 import type { ApiType } from "../cdp/interceptor";
 import type { FetchEvent } from "../cdp/types";
 
@@ -98,6 +100,16 @@ describe("modes/writeMode", () => {
                 headers: {
                     foo: "bar",
                 },
+            });
+        });
+
+        [CONTINUE, NO_CONTENT, RESET_CONTENT, MOVED_PERMANENTLY, FOUND, NOT_MODIFIED].forEach(responseStatusCode => {
+            it(`should not try to get body for ${responseStatusCode} status code`, async () => {
+                const getRealResponse = jest.fn();
+
+                await handle_({ responseStatusCode, getRealResponse });
+
+                expect(getRealResponse).not.toBeCalled();
             });
         });
     });

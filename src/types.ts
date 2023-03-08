@@ -21,7 +21,12 @@ export interface Dump {
     };
 }
 
+export type SupportedResourceType = Extract<
+    Protocol.Network.ResourceType,
+    "Document" | "Stylesheet" | "Image" | "Media" | "Script" | "XHR" | "Fetch"
+>;
+
 export interface MocksPattern {
     url: string;
-    resources: Protocol.Network.ResourceType[] | "*";
+    resources: SupportedResourceType[] | "*";
 }
