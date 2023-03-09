@@ -7,14 +7,22 @@ import { mkRequestXHRInterceptor } from "../cdp";
 import { Store } from "../store";
 import { MocksPattern } from "../types";
 
-export async function readMode(session: CDPSession, patterns: MocksPattern[], getStore: () => Store): Promise<void> {
+interface ReadModeArgs {
+    session: CDPSession;
+    patterns: MocksPattern[];
+    dumpsKey: (requestUrl: string) => string;
+    getStore: () => Store;
+}
+
+export async function readMode({ session, patterns, dumpsKey, getStore }: ReadModeArgs): Promise<void> {
     const requestInterceptor = mkRequestXHRInterceptor(session, patterns);
 
     requestInterceptor.listen(async ({ requestId, request }, api) => {
         const store = getStore();
 
         try {
-            const dumpResponse = await store.get(request.url);
+            const dumpKey = dumpsKey(request.url);
+            const dumpResponse = await store.get(dumpKey);
 
             if (dumpResponse) {
                 await api.respondWithMock({

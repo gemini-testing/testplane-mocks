@@ -1,3 +1,4 @@
+import _ from "lodash";
 import { CONTINUE, NO_CONTENT, RESET_CONTENT, MOVED_PERMANENTLY, FOUND, NOT_MODIFIED } from "http-codes";
 import type { CDPSession } from "puppeteer-core";
 
@@ -19,18 +20,25 @@ const mockedXHRInterceptor: MockedXHRInterceptor = {
     },
 };
 
-const mockedStore = {
-    set: jest.fn(),
-} as unknown as Store;
-
 jest.mock("../cdp", () => ({
     ...jest.requireActual("../cdp"),
     mkResponseXHRInterceptor: () => mockedXHRInterceptor,
 }));
 
 describe("modes/writeMode", () => {
+    let mockedStore: Store;
+    let dumpsKey: jest.MockedFn<(requestUrl: string) => string>;
+
     beforeEach(async () => {
-        await writeMode({} as CDPSession, [], () => mockedStore);
+        mockedStore = { set: jest.fn() } as unknown as Store;
+        dumpsKey = jest.fn().mockImplementation(_.identity);
+
+        await writeMode({
+            session: {} as CDPSession,
+            patterns: [],
+            dumpsKey,
+            getStore: () => mockedStore,
+        });
     });
 
     it("should enable XHR interceptor", async () => {
@@ -73,6 +81,19 @@ describe("modes/writeMode", () => {
                 responseCode: 200,
                 body: "body",
                 headers: {},
+            });
+        });
+
+        it("should create key with 'dumpsKey' function", async () => {
+            dumpsKey.mockReturnValueOnce("anotherUrl");
+
+            await handle_({ requestUrl: "url" });
+
+            expect(dumpsKey).toBeCalledWith("url");
+            expect(mockedStore.set).toBeCalledWith("anotherUrl", {
+                body: "body",
+                headers: {},
+                responseCode: 200,
             });
         });
 

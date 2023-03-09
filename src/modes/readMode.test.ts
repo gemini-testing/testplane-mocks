@@ -1,8 +1,8 @@
 import _ from "lodash";
+import type { CDPSession } from "puppeteer-core";
 
 import { Store } from "../store";
 import { readMode } from ".";
-import type { CDPSession } from "puppeteer-core";
 import type { ApiType } from "../cdp/interceptor";
 import type { FetchEvent } from "../cdp/types";
 import HermioneMocksError from "../hermioneMocksError";
@@ -21,20 +21,27 @@ const mockedXHRInterceptor: MockedXHRInterceptor = {
     },
 };
 
-let mockedStore: Store;
-
 jest.mock("../cdp", () => ({
     mkRequestXHRInterceptor: () => mockedXHRInterceptor,
 }));
 
 describe("modes/readMode", () => {
+    let mockedStore: Store;
+    let dumpsKey: jest.MockedFn<(requestUrl: string) => string>;
+
     beforeEach(async () => {
+        dumpsKey = jest.fn().mockImplementation(_.identity);
         mockedStore = {
             get: jest.fn(),
             currentTest: {},
         } as unknown as Store;
 
-        await readMode({} as CDPSession, [], () => mockedStore);
+        await readMode({
+            session: {} as CDPSession,
+            patterns: [],
+            dumpsKey,
+            getStore: () => mockedStore,
+        });
     });
 
     it("should enable XHR interceptor", async () => {
@@ -62,6 +69,15 @@ describe("modes/readMode", () => {
             await handle_({ requestUrl: "url" });
 
             expect(mockedStore.get).toBeCalledWith("url");
+        });
+
+        it("should create key with 'dumpsKey' function", async () => {
+            dumpsKey.mockReturnValueOnce("anotherUrl");
+
+            await handle_({ requestUrl: "url" });
+
+            expect(dumpsKey).toBeCalledWith("url");
+            expect(mockedStore.get).toBeCalledWith("anotherUrl");
         });
 
         it("should set error if dump does not exist", async () => {

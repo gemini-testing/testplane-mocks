@@ -26,6 +26,7 @@ npm install hermione-mocks --save-dev
 * **dumpsDir** (optional) `string | (test: Hermione.Test) => string` -  dumps' directory. Default - `"hermione-dumps"`. Available types:
    - `string`: (ex: `"hermione-dumps"`). All your dumps will be located in `hermione-dumps` in the root of the project.
    - `(test: Hermione.Test) => string`: (ex: `path.join(path.dirname(test.file), "hermione-dumps")`. `hermione-dumps` directories will be located next to each hermione test). Saves tests' dumps to directories by path, returned by the function
+* **dumpsKey** (optional) `(requestUrl: string) => string` - function to create dumps key from request url. Сan be used to remove query parameters that unique every time. If you dont remove unique query params, you will encounter an error `Cache is empty: key=...` on `play` mode.
 
 Also there is ability to override plugin parameters by CLI options or environment variables (see [configparser](https://github.com/gemini-testing/configparser)).
 
@@ -50,7 +51,14 @@ module.exports = {
             ]
             browsers: ["chrome"],
             mode: "save",
-            dumpsDir: "hermione-dumps"
+            dumpsDir: "hermione-dumps",
+            dumpsKey: (requestUrl) => {
+                const urlObj = new URL(requestUrl);
+
+                urlObj.searchParams.delete('uniqRequestId');
+
+                return urlObj.toString();
+            }
         },
 
         // other hermione plugins...

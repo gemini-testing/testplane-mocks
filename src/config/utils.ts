@@ -50,6 +50,13 @@ const assertType = <T>(name: string, validationFn: (v: unknown) => boolean, type
     };
 };
 
+const validateRunMode = (name: string): ((v: string) => void) => {
+    const validTypes = Object.values(RunMode)
+        .map(val => `"${val}"`)
+        .join(" or ");
+    return assertType<string>(name, isRunModeOption, validTypes);
+};
+
 export const booleanOption = (name: string, defaultValue: boolean): Parser<boolean> =>
     option<boolean>({
         parseEnv: JSON.parse,
@@ -58,7 +65,31 @@ export const booleanOption = (name: string, defaultValue: boolean): Parser<boole
         validate: assertType<boolean>(name, _.isBoolean, "boolean"),
     });
 
-export const stringOrFunctionOption = (
+export function mocksPatternsOption(name: string, defaultValue: MocksPattern[]): Parser<MocksPattern[]> {
+    return option<MocksPattern[]>({
+        parseEnv: JSON.parse,
+        parseCli: JSON.parse,
+        defaultValue,
+        validate: assertType<MocksPattern[]>(name, isPatternsOption, "array of objects"),
+    });
+}
+
+export function arrayStringOption(name: string, defaultValue: string[]): Parser<string[]> {
+    return option<string[]>({
+        parseEnv: JSON.parse,
+        parseCli: JSON.parse,
+        defaultValue,
+        validate: assertType<string[]>(name, isStringArray, "array of strings"),
+    });
+}
+
+export const runModeOption = (name: string, defaultValue?: RunMode): Parser<RunMode> =>
+    option<RunMode>({
+        defaultValue,
+        validate: validateRunMode(name),
+    });
+
+export const dumpsDirOption = (
     name: string,
     defaultValue: string | ((test: Hermione.Test) => string),
 ): Parser<string | ((test: Hermione.Test) => string)> =>
@@ -73,33 +104,11 @@ export const stringOrFunctionOption = (
         ),
     });
 
-const validateRunMode = (name: string): ((v: string) => void) => {
-    const validTypes = Object.values(RunMode)
-        .map(val => `"${val}"`)
-        .join(" or ");
-    return assertType<string>(name, isRunModeOption, validTypes);
-};
-
-export const runModeOption = (name: string, defaultValue?: RunMode): Parser<RunMode> =>
-    option<RunMode>({
-        defaultValue,
-        validate: validateRunMode(name),
+export const dumpsKeyOption = (
+    name: string,
+    defaultValue: (requestUrl: string) => string,
+): Parser<(requestUrl: string) => string> =>
+    option<(url: string) => string>({
+        defaultValue: () => defaultValue,
+        validate: assertType<(url: string) => string>(name, _.isFunction, "Function"),
     });
-
-export function arrayStringOption(name: string, defaultValue: string[]): Parser<string[]> {
-    return option<string[]>({
-        parseEnv: JSON.parse,
-        parseCli: JSON.parse,
-        defaultValue,
-        validate: assertType<string[]>(name, isStringArray, "array of strings"),
-    });
-}
-
-export function mocksPatternsOption(name: string, defaultValue: MocksPattern[]): Parser<MocksPattern[]> {
-    return option<MocksPattern[]>({
-        parseEnv: JSON.parse,
-        parseCli: JSON.parse,
-        defaultValue,
-        validate: assertType<MocksPattern[]>(name, isPatternsOption, "array of objects"),
-    });
-}
