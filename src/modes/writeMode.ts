@@ -8,27 +8,34 @@ import { mkResponseXHRInterceptor, normalizeHeaders } from "../cdp";
 import { Store } from "../store";
 import { MocksPattern } from "../types";
 
+interface WriteModeArgs {
+    session: CDPSession;
+    patterns: MocksPattern[];
+    dumpsKey: (requestUrl: string) => string;
+    getStore: () => Store;
+}
+
 function hasNoBody(statusCode: number): boolean {
     const isInformational = statusCode >= 100 && statusCode < 200;
 
     return isInformational || [NO_CONTENT, RESET_CONTENT, MOVED_PERMANENTLY, FOUND, NOT_MODIFIED].includes(statusCode);
 }
 
-export async function writeMode(session: CDPSession, patterns: MocksPattern[], getStore: () => Store): Promise<void> {
+export async function writeMode({ session, patterns, dumpsKey, getStore }: WriteModeArgs): Promise<void> {
     const responseInterceptor = mkResponseXHRInterceptor(session, patterns);
 
     responseInterceptor.listen(async ({ requestId, request, responseHeaders, responseStatusCode }, api) => {
         const store = getStore();
 
         try {
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            const responseCode = responseStatusCode!;
+            const dumpKey = dumpsKey(request.url);
+            const responseCode = responseStatusCode!; // eslint-disable-line @typescript-eslint/no-non-null-assertion
             const headers = normalizeHeaders(responseHeaders);
             const body = hasNoBody(responseCode)
                 ? ""
                 : await api.getRealResponse(requestId).then(res => res.toString("binary"));
 
-            store.set(request.url, { responseCode, headers, body });
+            store.set(dumpKey, { responseCode, headers, body });
 
             await api.respondWithMock({
                 requestId,

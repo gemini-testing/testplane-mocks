@@ -1,6 +1,14 @@
+import _ from "lodash";
 import { root, section } from "gemini-configparser";
 
-import { arrayStringOption, stringOrFunctionOption, booleanOption, runModeOption, mocksPatternsOption } from "./utils";
+import {
+    arrayStringOption,
+    dumpsDirOption,
+    booleanOption,
+    runModeOption,
+    mocksPatternsOption,
+    dumpsKeyOption,
+} from "./utils";
 import { DUMPS_DIR } from "../constants";
 import { MocksPattern, RunMode } from "../types";
 
@@ -10,6 +18,7 @@ export type PluginConfig = {
     browsers: string[];
     mode: RunMode;
     dumpsDir: string | ((test: Hermione.Test) => string);
+    dumpsKey: (requestUrl: string) => string;
 };
 
 export function parseConfig(options: PluginConfig): PluginConfig {
@@ -20,7 +29,8 @@ export function parseConfig(options: PluginConfig): PluginConfig {
             patterns: mocksPatternsOption("patterns", []),
             browsers: arrayStringOption("browsers", []),
             mode: runModeOption("mode", RunMode.Play),
-            dumpsDir: stringOrFunctionOption("dumpsDir", DUMPS_DIR),
+            dumpsDir: dumpsDirOption("dumpsDir", DUMPS_DIR),
+            dumpsKey: dumpsKeyOption("dumpsKey", _.identity),
         }),
         {
             envPrefix: "hermione_mocks_",

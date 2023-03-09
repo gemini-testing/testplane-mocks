@@ -36,14 +36,17 @@ export = (hermione: Hermione, opts: PluginConfig): void => {
         }
 
         const session = await target.createCDPSession();
+        const { patterns, dumpsKey } = config;
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const getStore: () => Store = () => stores.get(sessionId)!;
 
+        const modeArgs = { session, patterns, dumpsKey, getStore };
+
         await useModes(
             {
-                onPlay: () => readMode(session, config.patterns, getStore),
-                onCreate: () => writeMode(session, config.patterns, getStore),
-                onSave: () => writeMode(session, config.patterns, getStore),
+                onPlay: () => readMode(modeArgs),
+                onCreate: () => writeMode(modeArgs),
+                onSave: () => writeMode(modeArgs),
             },
             config.mode,
         );
