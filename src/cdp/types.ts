@@ -13,7 +13,3 @@ export enum FetchInterceptionStage {
     Request = "Request",
     Response = "Response",
 }
-
-export enum FetchResourceType {
-    XHR = "XHR",
-}

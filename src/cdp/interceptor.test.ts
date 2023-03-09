@@ -1,7 +1,10 @@
 import btoa from "btoa";
 import type { CDPSession } from "puppeteer-core";
-import { ApiType, CdpInterceptor } from "./interceptor";
-import { FetchInterceptionStage, FetchResourceType } from "./types";
+import type { MocksPattern } from "../types";
+import type { ApiType } from "./interceptor";
+import { SUPPORTED_RESOURCE_TYPES } from "../constants";
+import { CdpInterceptor } from "./interceptor";
+import { FetchInterceptionStage } from "./types";
 
 describe("cdp/interceptor", () => {
     let interceptor: CdpInterceptor;
@@ -9,7 +12,10 @@ describe("cdp/interceptor", () => {
         send: jest.SpyInstance;
         on: jest.SpyInstance;
     };
-    const pattern = "*";
+    const patterns: MocksPattern[] = [
+        { url: "foo", resources: ["XHR", "Document"] },
+        { url: "bar", resources: ["Image"] },
+    ];
 
     beforeEach(() => {
         session = {
@@ -17,36 +23,54 @@ describe("cdp/interceptor", () => {
             on: jest.fn(),
         };
 
-        interceptor = new CdpInterceptor(
-            session as unknown as CDPSession,
-            FetchResourceType.XHR,
-            FetchInterceptionStage.Request,
-            [pattern],
-        );
+        interceptor = new CdpInterceptor(session as unknown as CDPSession, patterns, FetchInterceptionStage.Request);
     });
 
     describe("enable", () => {
         it("should send 'enable' command with passed params", async () => {
-            session.send.mockResolvedValue(null);
-
             await interceptor.enable();
 
             expect(session.send).toBeCalledWith("Fetch.enable", {
                 patterns: [
                     {
+                        urlPattern: "foo",
                         requestStage: "Request",
-                        resourceType: FetchResourceType.XHR,
-                        urlPattern: pattern,
+                        resourceType: "XHR",
+                    },
+                    {
+                        urlPattern: "foo",
+                        requestStage: "Request",
+                        resourceType: "Document",
+                    },
+                    {
+                        urlPattern: "bar",
+                        requestStage: "Request",
+                        resourceType: "Image",
                     },
                 ],
             });
+        });
+
+        it("should enable all resource types if '*' is passed", async () => {
+            const patterns = SUPPORTED_RESOURCE_TYPES.map(resourceType => ({
+                urlPattern: "foo",
+                requestStage: "Request",
+                resourceType,
+            }));
+            interceptor = new CdpInterceptor(
+                session as unknown as CDPSession,
+                [{ url: "foo", resources: "*" }],
+                FetchInterceptionStage.Request,
+            );
+
+            await interceptor.enable();
+
+            expect(session.send).toBeCalledWith("Fetch.enable", { patterns });
         });
     });
 
     describe("listen", () => {
         it("should subscribe on requests", async () => {
-            session.on.mockResolvedValue(null);
-
             // eslint-disable-next-line @typescript-eslint/no-empty-function
             interceptor.listen(async () => {});
 
@@ -54,8 +78,6 @@ describe("cdp/interceptor", () => {
         });
 
         it("should call listener with API", async () => {
-            session.on.mockResolvedValue(null);
-
             const listener = jest.fn();
 
             interceptor.listen(listener);
@@ -79,8 +101,6 @@ describe("cdp/interceptor", () => {
         let api: ApiType;
 
         beforeEach(async () => {
-            session.on.mockResolvedValue(null);
-
             const listener = jest.fn();
 
             interceptor.listen(listener);
@@ -96,8 +116,6 @@ describe("cdp/interceptor", () => {
 
         describe("continueRequest", () => {
             it("should send original request", async () => {
-                session.send.mockResolvedValue(null);
-
                 await api.continueRequest("some-id");
 
                 expect(session.send).toBeCalledWith("Fetch.continueRequest", { requestId: "some-id" });
@@ -142,8 +160,6 @@ describe("cdp/interceptor", () => {
 
         describe("respondWithMock", () => {
             it("should send fulfill command", async () => {
-                session.send.mockResolvedValue(null);
-
                 await api.respondWithMock({ requestId: "some-id", body: "", headers: {} });
 
                 expect(session.send).toBeCalledWith(
@@ -158,8 +174,6 @@ describe("cdp/interceptor", () => {
             });
 
             it("should use default `200` response code", async () => {
-                session.send.mockResolvedValue(null);
-
                 await api.respondWithMock({ requestId: "some-id", body: "", headers: {} });
 
                 expect(session.send).toBeCalledWith(
@@ -171,8 +185,6 @@ describe("cdp/interceptor", () => {
             });
 
             it("should transform headers to pairs", async () => {
-                session.send.mockResolvedValue(null);
-
                 await api.respondWithMock({ requestId: "some-id", body: "", headers: { "content-type": "image" } });
 
                 expect(session.send).toBeCalledWith(
@@ -189,8 +201,6 @@ describe("cdp/interceptor", () => {
             });
 
             it("should encode body data to base64-asci", async () => {
-                session.send.mockResolvedValue(null);
-
                 await api.respondWithMock({
                     requestId: "some-id",
                     body: "data",

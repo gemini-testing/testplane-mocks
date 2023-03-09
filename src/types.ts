@@ -1,3 +1,5 @@
+import type { Protocol } from "puppeteer-core";
+
 export enum RunMode {
     Play = "play",
     Save = "save",
@@ -17,4 +19,14 @@ export interface Dump {
     responses: {
         [responseId: string]: DumpResponse;
     };
+}
+
+export type SupportedResourceType = Extract<
+    Protocol.Network.ResourceType,
+    "Document" | "Stylesheet" | "Image" | "Media" | "Script" | "XHR" | "Fetch"
+>;
+
+export interface MocksPattern {
+    url: string;
+    resources: SupportedResourceType[] | "*";
 }

@@ -1,23 +1,23 @@
 import { root, section } from "gemini-configparser";
 
-import { arrayStringOption, stringOrFunctionOption, booleanOption, runModeOption } from "./utils";
+import { arrayStringOption, stringOrFunctionOption, booleanOption, runModeOption, mocksPatternsOption } from "./utils";
 import { DUMPS_DIR } from "../constants";
-import { RunMode } from "../types";
+import { MocksPattern, RunMode } from "../types";
 
 export type PluginConfig = {
     enabled: boolean;
-    hostsPatterns: string[];
+    patterns: MocksPattern[];
     browsers: string[];
     mode: RunMode;
     dumpsDir: string | ((test: Hermione.Test) => string);
 };
 
-export function parseConfig(options: PluginConfig, hermioneConfig: Hermione.Config): PluginConfig {
+export function parseConfig(options: PluginConfig): PluginConfig {
     const { env, argv } = process;
     const parseOptions = root<PluginConfig>(
         section({
             enabled: booleanOption("enabled", true),
-            hostsPatterns: arrayStringOption("hostsPatterns", [hermioneConfig.baseUrl + "*"]),
+            patterns: mocksPatternsOption("patterns", []),
             browsers: arrayStringOption("browsers", []),
             mode: runModeOption("mode", RunMode.Play),
             dumpsDir: stringOrFunctionOption("dumpsDir", DUMPS_DIR),

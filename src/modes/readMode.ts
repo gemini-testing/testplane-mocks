@@ -5,8 +5,9 @@ import HermioneMocksError from "../hermioneMocksError";
 import { TEST_MOCKS_ERROR } from "../constants";
 import { mkRequestXHRInterceptor } from "../cdp";
 import { Store } from "../store";
+import { MocksPattern } from "../types";
 
-export async function readMode(session: CDPSession, patterns: string[], getStore: () => Store): Promise<void> {
+export async function readMode(session: CDPSession, patterns: MocksPattern[], getStore: () => Store): Promise<void> {
     const requestInterceptor = mkRequestXHRInterceptor(session, patterns);
 
     requestInterceptor.listen(async ({ requestId, request }, api) => {

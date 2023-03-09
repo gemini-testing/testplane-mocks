@@ -1,18 +1,15 @@
-import Hermione from "hermione";
 import { PluginConfig, parseConfig as parseConfigOrigin } from ".";
 import { DUMPS_DIR } from "../constants";
 import { RunMode } from "../types";
 
-const parseConfig = (
-    pluginConfig: Record<string, unknown>,
-    hermioneConfig: Record<string, unknown> = {},
-): PluginConfig => parseConfigOrigin(pluginConfig as PluginConfig, hermioneConfig as unknown as Hermione.Config);
+const parseConfig = (pluginConfig: Record<string, unknown>): PluginConfig =>
+    parseConfigOrigin(pluginConfig as PluginConfig);
 
 describe("config", () => {
     it("should parse default config", () => {
-        expect(parseConfig({}, { baseUrl: "baseUrl" })).toMatchObject({
+        expect(parseConfig({})).toMatchObject({
             enabled: true,
-            hostsPatterns: ["baseUrl*"],
+            patterns: [],
             browsers: [],
             mode: RunMode.Play,
             dumpsDir: DUMPS_DIR,
@@ -31,18 +28,52 @@ describe("config", () => {
         });
     });
 
-    describe("hostsPatterns", () => {
-        it("should throw if it is not type of Array", () => {
-            expect(() => parseConfig({ hostsPatterns: "*" })).toThrow(/must be an array of strings/);
+    describe("patterns", () => {
+        describe("should throw", () => {
+            it("if it is not type of Array", () => {
+                expect(() => parseConfig({ patterns: 2 })).toThrow(/must be an array of objects/);
+            });
+
+            it("if each item is not type of MocksPattern", () => {
+                expect(() => parseConfig({ patterns: [2] })).toThrow(/must be an object/);
+            });
+
+            it("if item 'urlPattern' is not a string", () => {
+                expect(() => parseConfig({ patterns: [{ url: 2, resources: "*" }] })).toThrow(/must be a string/);
+            });
+
+            describe("if item 'resource'", () => {
+                it("is not an '*' or array", () => {
+                    expect(() => parseConfig({ patterns: [{ url: "", resources: 2 }] })).toThrow(
+                        /must be a '\*' or array/,
+                    );
+                });
+
+                it("is array and it has not a string values", () => {
+                    expect(() => parseConfig({ patterns: [{ url: "", resources: [2] }] })).toThrow(
+                        /must be a '\*' or array/,
+                    );
+                });
+
+                it("is array and it has non-resource values", () => {
+                    expect(() => parseConfig({ patterns: [{ url: "", resources: ["foo"] }] })).toThrow(
+                        /is not a valid resource/,
+                    );
+                });
+            });
         });
 
-        it("should throw if each item is not type of String", () => {
-            expect(() => parseConfig({ hostsPatterns: ["*", 2] })).toThrow(/[2=number]/);
-        });
+        describe("should parse", () => {
+            it("if resources is array of types", () => {
+                expect(parseConfig({ patterns: [{ url: "*", resources: ["Document"] }] })).toMatchObject({
+                    patterns: [{ url: "*", resources: ["Document"] }],
+                });
+            });
 
-        it("should parse", () => {
-            expect(parseConfig({ hostsPatterns: ["path"] })).toMatchObject({
-                hostsPatterns: ["path"],
+            it("if resources is '*'", () => {
+                expect(parseConfig({ patterns: [{ url: "*", resources: "*" }] })).toMatchObject({
+                    patterns: [{ url: "*", resources: "*" }],
+                });
             });
         });
     });
