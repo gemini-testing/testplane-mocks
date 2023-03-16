@@ -16,14 +16,16 @@ describe("store", () => {
         dumpsDir?: string | ((test: Hermione.Test) => string);
         workersRunner?: WorkersRunner;
         test?: Hermione.Test;
+        gzipDumps?: boolean;
     }) => Store;
 
     const createStore_: createStore = (opts = {}) => {
-        opts.dumpsDir ||= "dumps-dir";
-        opts.workersRunner ||= workersRunner;
-        opts.test ||= test;
+        opts.dumpsDir ??= "dumps-dir";
+        opts.workersRunner ??= workersRunner;
+        opts.test ??= test;
+        opts.gzipDumps ??= true;
 
-        return Store.create(opts.dumpsDir, opts.workersRunner, opts.test);
+        return Store.create(opts.dumpsDir, opts.workersRunner, opts.test, opts.gzipDumps);
     };
 
     beforeEach(() => {
@@ -76,8 +78,8 @@ describe("store", () => {
 
             await store.get("testUrl");
 
-            const dumpPath = path.resolve(process.cwd(), "specified", "uGDzURz0") + ".json";
-            expect(workersRunner.readDump).toBeCalledWith(dumpPath);
+            const dumpPath = path.resolve(process.cwd(), "specified", "uGDzURz0");
+            expect(workersRunner.readDump).toBeCalledWith(dumpPath, expect.anything());
         });
 
         it("should read dumps from dumpsDir as function", async () => {
@@ -85,8 +87,8 @@ describe("store", () => {
 
             await store.get("testUrl");
 
-            const dumpPath = path.resolve("fullTitle", "uGDzURz0") + ".json";
-            expect(workersRunner.readDump).toBeCalledWith(dumpPath);
+            const dumpPath = path.resolve("fullTitle", "uGDzURz0");
+            expect(workersRunner.readDump).toBeCalledWith(dumpPath, expect.anything());
         });
     });
 
@@ -108,22 +110,32 @@ describe("store", () => {
             expect(workersRunner.writeDump).toBeCalled();
         });
 
-        it("should overwrite existing dump if overwrite is set", async () => {
-            const store = createStore_();
-            store.set("foo", { body: "bar", headers: {}, responseCode: 200 });
+        [true, false].forEach(state => {
+            it(`should ${state ? "" : "not "}overwrite existing dump if "overwrite = ${state}"`, async () => {
+                const store = createStore_();
+                store.set("foo", { body: "bar", headers: {}, responseCode: 200 });
 
-            await store.saveDump({ overwrite: true });
+                await store.saveDump({ overwrite: state });
 
-            expect(workersRunner.writeDump).toBeCalledWith(expect.anything(), expect.anything(), true);
-        });
+                expect(workersRunner.writeDump).toBeCalledWith(
+                    expect.anything(),
+                    expect.anything(),
+                    expect.objectContaining({ overwrite: state }),
+                );
+            });
 
-        it("should not overwrite existing dump if overwrite is not set", async () => {
-            const store = createStore_();
-            store.set("foo", { body: "bar", headers: {}, responseCode: 200 });
+            it(`should save ${state ? "" : "not "}gzipped dumps if "gzipped = ${state}"`, async () => {
+                const store = createStore_({ gzipDumps: state });
+                store.set("foo", { body: "bar", headers: {}, responseCode: 200 });
 
-            await store.saveDump({ overwrite: false });
+                await store.saveDump({ overwrite: false });
 
-            expect(workersRunner.writeDump).toBeCalledWith(expect.anything(), expect.anything(), false);
+                expect(workersRunner.writeDump).toBeCalledWith(
+                    expect.anything(),
+                    expect.anything(),
+                    expect.objectContaining({ gzipDumps: state }),
+                );
+            });
         });
     });
 
@@ -159,6 +171,15 @@ describe("store", () => {
             expect(workersRunner.readDump).toBeCalled();
         });
 
+        it("should read gzipped dumps", async () => {
+            const store = createStore_({ dumpsDir: "dumps-dir", gzipDumps: true });
+
+            await store.get("testUrl");
+
+            const dumpPath = path.resolve("dumps-dir", "uGDzURz0");
+            expect(workersRunner.readDump).toBeCalledWith(dumpPath, { gzipDumps: true });
+        });
+
         it("should load dump only once", async () => {
             const store = createStore_();
 
@@ -178,7 +199,7 @@ describe("store", () => {
 
     describe("set", () => {
         it("should create empty dump if not exist", async () => {
-            const store = createStore_();
+            const store = createStore_({ gzipDumps: false });
             const expectingDump: Dump = {
                 requests: {
                     testUrl: [fResponse.hash],
@@ -191,11 +212,14 @@ describe("store", () => {
             store.set("testUrl", fResponse.response);
 
             await store.saveDump({ overwrite: false });
-            expect(workersRunner.writeDump).toBeCalledWith(expect.anything(), expectingDump, false);
+            expect(workersRunner.writeDump).toBeCalledWith(expect.anything(), expectingDump, {
+                overwrite: false,
+                gzipDumps: false,
+            });
         });
 
         it("should set subsequent dumps", async () => {
-            const store = createStore_();
+            const store = createStore_({ gzipDumps: false });
             const expectingDump: Dump = {
                 requests: {
                     testUrl: [fResponse.hash, fResponse.hash],
@@ -209,7 +233,10 @@ describe("store", () => {
             store.set("testUrl", fResponse.response);
 
             await store.saveDump({ overwrite: false });
-            expect(workersRunner.writeDump).toBeCalledWith(expect.anything(), expectingDump, false);
+            expect(workersRunner.writeDump).toBeCalledWith(expect.anything(), expectingDump, {
+                overwrite: false,
+                gzipDumps: false,
+            });
         });
     });
 

@@ -30,9 +30,10 @@ export async function readMode({ session, patterns, dumpsKey, getStore }: ReadMo
                     ...dumpResponse,
                 });
             } else {
-                const err = new HermioneMocksError(`Cache is empty:\nkey=${request.url}`);
+                const errMessage = `Cache is empty:\nkey=${dumpKey}`;
+                const error = _.get(store.currentTest, TEST_MOCKS_ERROR, new HermioneMocksError(errMessage));
 
-                _.set(store.currentTest, TEST_MOCKS_ERROR, err);
+                _.set(store.currentTest, TEST_MOCKS_ERROR, error);
             }
         } catch (err: unknown) {
             const errMessage = (err as Error).message;
