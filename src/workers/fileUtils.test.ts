@@ -1,11 +1,8 @@
 import fs from "fs";
 import zlib from "zlib";
-import StreamMock from "./__mocks__/streamMock";
 import { readJson, readJsonGz, writeJson, writeJsonGz } from "./fileUtils";
 
 interface FsMock {
-    createReadStream: jest.Mock;
-    createWriteStream: jest.Mock;
     promises: {
         readFile: jest.Mock;
         writeFile: jest.Mock;
@@ -13,56 +10,41 @@ interface FsMock {
 }
 
 interface ZlibMock {
-    createGzip: jest.Mock;
-    createGunzip: jest.Mock;
+    gzip: jest.Mock;
+    unzip: jest.Mock;
 }
 
 jest.mock("fs", () => ({
-    createReadStream: jest.fn(),
-    createWriteStream: jest.fn(),
     promises: {
-        readFile: jest.fn().mockResolvedValue("{}"),
         writeFile: jest.fn().mockReturnValue(Promise.resolve()),
+        readFile: jest.fn().mockImplementation((_, opts = {}) => {
+            const result = opts.encoding === "utf8" ? "{}" : Buffer.from("{}");
+
+            return Promise.resolve(result);
+        }),
     },
 }));
 
 jest.mock("zlib", () => ({
-    createGzip: jest.fn(),
-    createGunzip: jest.fn(),
+    gzip: jest.fn().mockImplementation((content, callback) => callback(null, content)),
+    unzip: jest.fn().mockImplementation((content, callback) => callback(null, content)),
 }));
 
 describe("workers/fileUtils", () => {
     const mockedFs = fs as unknown as FsMock;
     const mockedZlib = zlib as unknown as ZlibMock;
 
-    let readStreamMock: StreamMock;
-    let writeStreamMock: StreamMock;
-    let gunzipMock: StreamMock;
-    let gzipMock: StreamMock;
-    let readPipeMock: StreamMock;
-    let writePipeMock: StreamMock;
-
-    beforeEach(() => {
-        readStreamMock = new StreamMock();
-        writeStreamMock = new StreamMock();
-        gunzipMock = new StreamMock();
-        gzipMock = new StreamMock();
-        readPipeMock = new StreamMock();
-        writePipeMock = new StreamMock();
-
-        mockedFs.createReadStream.mockReturnValue(readStreamMock);
-        mockedFs.createWriteStream.mockReturnValue(writeStreamMock);
-
-        mockedZlib.createGunzip.mockReturnValue(gunzipMock);
-        mockedZlib.createGzip.mockReturnValue(gzipMock);
-
-        readStreamMock.pipe.mockReturnValue(readPipeMock);
-        gzipMock.pipe.mockReturnValue(writePipeMock);
-    });
-
     afterEach(() => {
         jest.clearAllMocks();
     });
+
+    function mockZlibResolve_(fnName: "gzip" | "unzip", value: string | Buffer): void {
+        mockedZlib[fnName].mockImplementationOnce((_, callback) => callback(null, value));
+    }
+
+    function mockZlibReject_(fnName: "gzip" | "unzip", error: Error): void {
+        mockedZlib[fnName].mockImplementationOnce((_, callback) => callback(error));
+    }
 
     describe("readJson", () => {
         it("should read file with .json extension", async () => {
@@ -90,7 +72,7 @@ describe("workers/fileUtils", () => {
 
         it("should write file content", async () => {
             const dump = { requests: {}, responses: {} };
-            const dumpJson = JSON.stringify(dump, null, 2);
+            const dumpJson = JSON.stringify(dump, null, 4);
 
             await writeJson("fileName", dump);
 
@@ -99,77 +81,52 @@ describe("workers/fileUtils", () => {
     });
 
     describe("readJsonGz", () => {
-        it("should pipe read -> decompress", async () => {
-            readPipeMock.setPendingEvents([{ name: "data", args: [Buffer.from("{}")] }, { name: "end" }]);
-
+        it("should read file with .json.gz extension", async () => {
             await readJsonGz("fileName");
 
-            expect(readStreamMock.pipe).toBeCalledWith(gunzipMock);
+            expect(mockedFs.promises.readFile).toBeCalledWith("fileName.json.gz");
         });
 
-        it("should create read stream with .json.gz extension", async () => {
-            readPipeMock.setPendingEvents([{ name: "data", args: [Buffer.from("{}")] }, { name: "end" }]);
-
-            await readJsonGz("fileName");
-
-            expect(mockedFs.createReadStream).toBeCalledWith("fileName.json.gz");
-        });
-
-        it("should concatenate chunks", async () => {
-            readPipeMock.setPendingEvents([
-                { name: "data", args: [Buffer.from('{"requests": {}, ')] },
-                { name: "data", args: [Buffer.from('"responses": {}}')] },
-                { name: "end" },
-            ]);
+        it("should decompress content", async () => {
+            mockedFs.promises.readFile.mockResolvedValueOnce("compressed-data");
+            mockZlibResolve_("unzip", Buffer.from('{"foo": "bar"}'));
 
             const dump = await readJsonGz("fileName");
 
-            expect(dump).toEqual({ requests: {}, responses: {} });
+            expect(mockedZlib.unzip).toBeCalledWith("compressed-data", expect.any(Function));
+            expect(dump).toEqual({ foo: "bar" });
         });
 
         it("should reject if an error occured during reading a file", async () => {
-            readStreamMock.setPendingEvents([{ name: "error", args: ["foo"] }]);
+            mockedFs.promises.readFile.mockRejectedValueOnce(Error("foo"));
 
-            await expect(() => readJsonGz("fileName")).rejects.toEqual("foo");
+            await expect(() => readJsonGz("fileName")).rejects.toEqual(Error("foo"));
         });
 
         it("should reject if an error occured during decompressing a file", async () => {
-            gunzipMock.setPendingEvents([{ name: "error", args: ["bar"] }]);
+            mockZlibReject_("unzip", Error("bar"));
 
-            await expect(() => readJsonGz("fileName")).rejects.toEqual("bar");
+            await expect(() => readJsonGz("fileName")).rejects.toEqual(Error("bar"));
         });
     });
 
     describe("writeJsonGz", () => {
-        it("should create write stream with .json.gz extension", async () => {
-            writeStreamMock.setPendingEvents([{ name: "finish" }]);
-
+        it("should write file with .json.gz extension", async () => {
             await writeJsonGz("fileName", { requests: {}, responses: {} });
 
-            expect(mockedFs.createWriteStream).toBeCalledWith("fileName.json.gz");
+            expect(mockedFs.promises.writeFile).toBeCalledWith("fileName.json.gz", expect.any(Buffer));
         });
 
-        it("should pipe compress -> write", async () => {
-            writeStreamMock.setPendingEvents([{ name: "finish" }]);
+        it("should compress content", async () => {
+            mockZlibResolve_("gzip", "compressed-data");
 
             await writeJsonGz("fileName", { requests: {}, responses: {} });
 
-            expect(gzipMock.pipe).toBeCalledWith(writeStreamMock);
-        });
-
-        it("should write passed dump", async () => {
-            writeStreamMock.setPendingEvents([{ name: "finish" }]);
-            const dump = { requests: {}, responses: {} };
-            const jsonDump = JSON.stringify(dump);
-            const buffer = Buffer.from(jsonDump);
-
-            await writeJsonGz("fileName", { requests: {}, responses: {} });
-
-            expect(gzipMock.end).toBeCalledWith(buffer);
+            expect(mockedFs.promises.writeFile).toBeCalledWith(expect.any(String), "compressed-data");
         });
 
         it("should reject if an error occured during writing a file", async () => {
-            writeStreamMock.setPendingEvents([{ name: "error", args: ["foo"] }]);
+            mockedFs.promises.writeFile.mockRejectedValueOnce("foo");
 
             await expect(() =>
                 writeJsonGz("fileName", {
