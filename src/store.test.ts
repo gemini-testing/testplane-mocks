@@ -25,7 +25,7 @@ describe("store", () => {
         opts.test ??= test;
         opts.gzipDumps ??= true;
 
-        return Store.create(opts.dumpsDir, opts.workersRunner, opts.test, opts.gzipDumps);
+        return new Store(opts.dumpsDir, opts.workersRunner, opts.test, opts.gzipDumps);
     };
 
     beforeEach(() => {

@@ -6,15 +6,6 @@ import type { WorkersRunner } from "./workers/worker";
 import type { Dump, DumpResponse } from "./types";
 
 export class Store {
-    static create(
-        dumpsDir: string | ((test: Hermione.Test) => string),
-        workersRunner: WorkersRunner,
-        test: Hermione.Test,
-        gzipDumps: boolean,
-    ): Store {
-        return new this(dumpsDir, workersRunner, test, gzipDumps);
-    }
-
     private dump?: Dump;
     private queryCounter: Map<string, number> | null = null;
 

@@ -101,7 +101,7 @@ export = (hermione: Hermione, opts: PluginConfig): void => {
             return;
         }
 
-        const newStore = Store.create(config.dumpsDir, workersRunner, test, config.gzipDumps);
+        const newStore = new Store(config.dumpsDir, workersRunner, test, config.gzipDumps);
 
         stores.set(test.sessionId, newStore);
     });
