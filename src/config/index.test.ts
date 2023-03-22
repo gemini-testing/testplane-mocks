@@ -13,6 +13,7 @@ describe("config", () => {
             browsers: [],
             mode: RunMode.Play,
             dumpsDir: DUMPS_DIR,
+            gzipDumps: true,
         });
     });
 
@@ -120,6 +121,18 @@ describe("config", () => {
         it("should parse", () => {
             expect(parseConfig({ dumpsDir: "file.path" })).toMatchObject({
                 dumpsDir: "file.path",
+            });
+        });
+    });
+
+    describe("gzipDumps", () => {
+        it("should throw if it is not type of Boolean", () => {
+            expect(() => parseConfig({ gzipDumps: "asd" })).toThrow(/must be a boolean/);
+        });
+
+        it("should parse option", () => {
+            expect(parseConfig({ gzipDumps: true })).toMatchObject({
+                gzipDumps: true,
             });
         });
     });

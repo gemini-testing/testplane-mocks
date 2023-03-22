@@ -2,17 +2,18 @@ import fs from "fs";
 import path from "path";
 
 import type { Dump } from "../types";
+import { readJsonGz, readJson, writeJsonGz, writeJson } from "./fileUtils";
 
-type readDump = (fileName: string) => Promise<Dump>;
-type writeDump = (fileName: string, dump: Dump, overwrite: boolean) => Promise<void>;
+type readDump = (fileName: string, opts?: { gzipDumps?: boolean }) => Promise<Dump>;
+type writeDump = (fileName: string, dump: Dump, opts?: { gzipDumps?: boolean; overwrite?: boolean }) => Promise<void>;
 
 export interface WorkersRunner {
     readDump: readDump;
     writeDump: writeDump;
 }
 
-export const readDump: readDump = async fileName => {
-    return fs.promises.readFile(fileName, { encoding: "utf8" }).then(JSON.parse);
+export const readDump: readDump = async (fileName, { gzipDumps = true } = {}) => {
+    return gzipDumps ? readJsonGz(fileName) : readJson(fileName);
 };
 
 const checkPathContent = async (path: string): Promise<"empty" | "file" | "directory"> => {
@@ -24,7 +25,7 @@ const checkPathContent = async (path: string): Promise<"empty" | "file" | "direc
     });
 };
 
-export const writeDump: writeDump = async (fileName, dump, overwrite) => {
+export const writeDump: writeDump = async (fileName, dump, { gzipDumps = true, overwrite } = {}) => {
     const pathContent = await checkPathContent(fileName);
 
     if (pathContent === "directory") {
@@ -36,5 +37,6 @@ export const writeDump: writeDump = async (fileName, dump, overwrite) => {
     }
 
     await fs.promises.mkdir(path.dirname(fileName), { recursive: true });
-    return fs.promises.writeFile(fileName, JSON.stringify(dump, null, 2));
+
+    return gzipDumps ? writeJsonGz(fileName, dump) : writeJson(fileName, dump);
 };

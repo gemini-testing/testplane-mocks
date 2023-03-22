@@ -12,3 +12,7 @@ export const SUPPORTED_RESOURCE_TYPES: SupportedResourceType[] = [
     "XHR",
     "Fetch",
 ];
+export enum DUMP_EXTENSIONS {
+    json = ".json",
+    jsonGz = ".json.gz",
+}

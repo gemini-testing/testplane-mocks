@@ -1,87 +1,82 @@
+import fs from "fs";
 import type { Dump } from "../types";
 import { readDump, writeDump } from "./worker";
+import fileUtils from "./fileUtils";
+
+interface FsMock {
+    promises: {
+        stat: jest.Mock;
+        mkdir: jest.Mock;
+    };
+}
+
+interface FileUtilsMock {
+    readJson: jest.Mock;
+    readJsonGz: jest.Mock;
+    writeJson: jest.Mock;
+    writeJsonGz: jest.Mock;
+}
 
 jest.mock("fs", () => ({
     promises: {
-        readFile: jest.fn(),
-        writeFile: jest.fn(),
         stat: jest.fn(),
         mkdir: jest.fn(),
     },
 }));
 
-import fs from "fs";
+jest.mock("./fileUtils", () => ({
+    readJson: jest.fn(),
+    readJsonGz: jest.fn(),
+    writeJson: jest.fn(),
+    writeJsonGz: jest.fn(),
+}));
 
 describe("workers/worker", () => {
-    interface fsMock {
-        promises: {
-            readFile: jest.Mock;
-            writeFile: jest.Mock;
-            stat: jest.Mock;
-            mkdir: jest.Mock;
-        };
-    }
-    const mockedFs = fs as unknown as fsMock;
+    const mockedFs = fs as unknown as FsMock;
+    const mockedFileUtils = fileUtils as unknown as FileUtilsMock;
+
+    afterEach(() => {
+        jest.clearAllMocks();
+    });
+
     describe("readDump", () => {
-        beforeEach(() => {
-            mockedFs.promises.readFile.mockResolvedValue(JSON.stringify({ foo: "bar" }));
+        it("should read dump from file system", async () => {
+            await readDump("fileName", { gzipDumps: false });
+
+            expect(mockedFileUtils.readJson).toBeCalledWith("fileName");
         });
 
-        it("should read dump from file system", async () => {
+        it("should read compressed dump by default", async () => {
             await readDump("fileName");
 
-            expect(mockedFs.promises.readFile).toBeCalledWith("fileName", { encoding: "utf8" });
+            expect(mockedFileUtils.readJsonGz).toBeCalled();
         });
 
-        it("should resolve parsed object", async () => {
-            expect(readDump("fileName")).resolves.toEqual({ foo: "bar" });
+        it("should read gzipped dump from file system", async () => {
+            await readDump("fileName", { gzipDumps: true });
+
+            expect(mockedFileUtils.readJsonGz).toBeCalledWith("fileName");
         });
+
+        [true, false].forEach(gzipDumps =>
+            it(`should resolve parsed object with "gzipDumps: ${gzipDumps}"`, () => {
+                mockedFileUtils.readJson.mockResolvedValue({ foo: "bar" });
+                mockedFileUtils.readJsonGz.mockResolvedValue({ foo: "bar" });
+
+                expect(readDump("fileName", { gzipDumps })).resolves.toEqual({ foo: "bar" });
+            }),
+        );
     });
 
     describe("writeDump", () => {
-        const writeDump_ = (opts: { fileName?: string; dump?: Dump; overwrite?: boolean } = {}): Promise<void> => {
+        const writeDump_ = (
+            opts: { fileName?: string; dump?: Dump; overwrite?: boolean; gzipDumps?: boolean } = {},
+        ): Promise<void> => {
             opts.fileName ||= "fileName";
             opts.dump ||= { requests: {}, responses: {} };
-            opts.overwrite ||= false;
 
-            return writeDump(opts.fileName, opts.dump, opts.overwrite);
+            return writeDump(opts.fileName, opts.dump, { overwrite: opts.overwrite, gzipDumps: opts.gzipDumps });
         };
-
-        it("should throw error if path contains directory", () => {
-            mockedFs.promises.stat.mockResolvedValue({ isDirectory: () => true });
-
-            expect(writeDump_).rejects.toThrow(/is directory/);
-        });
-
-        it("should not overwrite existing dump, if overwrite is not set", async () => {
-            mockedFs.promises.stat.mockResolvedValue({ isDirectory: () => false });
-
-            await writeDump_({ overwrite: false });
-
-            expect(mockedFs.promises.writeFile).not.toBeCalled();
-        });
-
-        it("should overwrite existing dump, if overwrite is set", async () => {
-            mockedFs.promises.stat.mockResolvedValue({ isDirectory: () => false });
-
-            await writeDump_({ overwrite: true });
-
-            expect(mockedFs.promises.writeFile).toBeCalledWith(
-                "fileName",
-                JSON.stringify({ requests: {}, responses: {} }, null, 2),
-            );
-        });
-
-        it("should save dump, if it does not exist", async () => {
-            mockedFs.promises.stat.mockRejectedValue("no such file or directory");
-
-            await writeDump_({ overwrite: false });
-
-            expect(mockedFs.promises.writeFile).toBeCalledWith(
-                "fileName",
-                JSON.stringify({ requests: {}, responses: {} }, null, 2),
-            );
-        });
 
         it("should create dump directory", async () => {
             mockedFs.promises.stat.mockRejectedValue("no such file or directory");
@@ -90,5 +85,51 @@ describe("workers/worker", () => {
 
             expect(mockedFs.promises.mkdir).toBeCalledWith("dir1/dir2", { recursive: true });
         });
+
+        it("should write compressed dump by default", async () => {
+            await writeDump_({ fileName: "fileName" });
+
+            expect(mockedFileUtils.writeJsonGz).toBeCalled();
+        });
+
+        it("should not overwrite dumps by default", async () => {
+            mockedFs.promises.stat.mockResolvedValue({ isDirectory: () => false });
+
+            await writeDump_({ fileName: "fileName" });
+
+            expect(mockedFileUtils.writeJsonGz).not.toBeCalled();
+        });
+
+        it("should throw error if path contains directory", () => {
+            mockedFs.promises.stat.mockResolvedValue({ isDirectory: () => true });
+
+            expect(writeDump_).rejects.toThrow(/is directory/);
+        });
+
+        [
+            { overwrite: false, gzipDumps: false, fn: mockedFileUtils.writeJson },
+            { overwrite: false, gzipDumps: true, fn: mockedFileUtils.writeJsonGz },
+            { overwrite: true, gzipDumps: false, fn: mockedFileUtils.writeJson },
+            { overwrite: true, gzipDumps: true, fn: mockedFileUtils.writeJsonGz },
+        ].forEach(({ overwrite, gzipDumps, fn }) => {
+            it(`should save ${
+                gzipDumps ? "gzipped " : ""
+            }dump with "overwrite: ${overwrite}", if it does not exist`, async () => {
+                mockedFs.promises.stat.mockRejectedValue("no such file or directory");
+
+                await writeDump_({ overwrite: false, gzipDumps });
+
+                expect(fn).toBeCalledWith("fileName", { requests: {}, responses: {} });
+            });
+        });
+        [true, false].forEach(overwrite =>
+            it(`should ${overwrite ? "" : "not "}overwrite existing dump, if "overwrite: ${overwrite}"`, async () => {
+                mockedFs.promises.stat.mockResolvedValue({ isDirectory: () => false });
+
+                await writeDump_({ overwrite });
+
+                expect(mockedFileUtils.writeJsonGz).toBeCalledTimes(Number(overwrite));
+            }),
+        );
     });
 });

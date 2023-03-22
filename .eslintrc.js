@@ -38,7 +38,7 @@ module.exports = {
     },
     overrides: [
         {
-            files: ["**/src/**/*.test.ts"],
+            files: ["**/src/**/*.test.ts", "**/src/**/__mocks__/*.ts"],
             rules: {
                 "@typescript-eslint/no-non-null-assertion": "off"
             }

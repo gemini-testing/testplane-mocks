@@ -19,6 +19,7 @@ export type PluginConfig = {
     mode: RunMode;
     dumpsDir: string | ((test: Hermione.Test) => string);
     dumpsKey: (requestUrl: string) => string;
+    gzipDumps: boolean;
 };
 
 export function parseConfig(options: PluginConfig): PluginConfig {
@@ -31,6 +32,7 @@ export function parseConfig(options: PluginConfig): PluginConfig {
             mode: runModeOption("mode", RunMode.Play),
             dumpsDir: dumpsDirOption("dumpsDir", DUMPS_DIR),
             dumpsKey: dumpsKeyOption("dumpsKey", _.identity),
+            gzipDumps: booleanOption("gzipDumps", true),
         }),
         {
             envPrefix: "hermione_mocks_",

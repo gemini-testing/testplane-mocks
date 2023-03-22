@@ -6,14 +6,6 @@ import type { WorkersRunner } from "./workers/worker";
 import type { Dump, DumpResponse } from "./types";
 
 export class Store {
-    static create(
-        dumpsDir: string | ((test: Hermione.Test) => string),
-        workersRunner: WorkersRunner,
-        test: Hermione.Test,
-    ): Store {
-        return new this(dumpsDir, workersRunner, test);
-    }
-
     private dump?: Dump;
     private queryCounter: Map<string, number> | null = null;
 
@@ -21,18 +13,22 @@ export class Store {
         private dumpsDir: string | ((test: Hermione.Test) => string),
         private workersRunner: WorkersRunner,
         private test: Hermione.Test,
+        private gzipDumps: boolean,
     ) {}
 
     public get currentTest(): Hermione.Test {
         return this.test;
     }
 
-    public async saveDump(opts: { overwrite: boolean }): Promise<void> {
+    public async saveDump({ overwrite }: { overwrite?: boolean }): Promise<void> {
         const dumpPath = this.getDumpPath();
 
         if (this.dump) {
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            await this.workersRunner.writeDump(dumpPath, this.dump!, opts.overwrite);
+            await this.workersRunner.writeDump(dumpPath, this.dump!, {
+                overwrite,
+                gzipDumps: this.gzipDumps,
+            });
         }
 
         delete this.dump;
@@ -42,7 +38,7 @@ export class Store {
         if (!this.dump) {
             const dumpPath = this.getDumpPath();
 
-            this.dump = await this.workersRunner.readDump(dumpPath);
+            this.dump = await this.workersRunner.readDump(dumpPath, { gzipDumps: this.gzipDumps });
         }
 
         const ind = this.getResponseIndex(hashKey);
@@ -76,7 +72,8 @@ export class Store {
     private getFileName(): string {
         const fileNameString = `${this.test.fullTitle()}#${this.test.browserId}`;
         const base64 = createHash("md5").update(fileNameString, "ascii").digest("base64");
-        return base64.slice(0, 8).replace(/\//g, "#") + ".json";
+
+        return base64.slice(0, 8).replace(/\//g, "#");
     }
 
     private getResponseHash({ responseCode, body, headers }: DumpResponse): string {
