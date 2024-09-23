@@ -2,7 +2,7 @@ import _ from "lodash";
 import type { CDPSession } from "puppeteer-core";
 import { NO_CONTENT, RESET_CONTENT, MOVED_PERMANENTLY, FOUND, NOT_MODIFIED } from "http-codes";
 
-import HermioneMocksError from "../hermioneMocksError";
+import TestplaneMocksError from "../testplaneMocksError";
 import { TEST_MOCKS_ERROR } from "../constants";
 import { mkResponseXHRInterceptor, normalizeHeaders } from "../cdp";
 import { Store } from "../store";
@@ -45,7 +45,7 @@ export async function writeMode({ session, patterns, dumpsKey, getStore }: Write
             });
         } catch (err: unknown) {
             const errMessage = (err as Error).message;
-            const error = _.get(store.currentTest, TEST_MOCKS_ERROR, new HermioneMocksError(errMessage));
+            const error = _.get(store.currentTest, TEST_MOCKS_ERROR, new TestplaneMocksError(errMessage));
 
             _.set(store.currentTest, TEST_MOCKS_ERROR, error);
         }

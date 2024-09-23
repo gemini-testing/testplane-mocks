@@ -5,7 +5,7 @@ import { Store } from "../store";
 import { readMode } from ".";
 import type { ApiType } from "../cdp/interceptor";
 import type { FetchEvent } from "../cdp/types";
-import HermioneMocksError from "../hermioneMocksError";
+import TestplaneMocksError from "../testplaneMocksError";
 import { TEST_MOCKS_ERROR } from "../constants";
 
 interface MockedXHRInterceptor {
@@ -83,7 +83,7 @@ describe("modes/readMode", () => {
         it("should set error if dump does not exist", async () => {
             await handle_({ requestUrl: "url" });
 
-            expect(_.get(mockedStore.currentTest, TEST_MOCKS_ERROR)).toBeInstanceOf(HermioneMocksError);
+            expect(_.get(mockedStore.currentTest, TEST_MOCKS_ERROR)).toBeInstanceOf(TestplaneMocksError);
         });
 
         it("should respond with mock", async () => {

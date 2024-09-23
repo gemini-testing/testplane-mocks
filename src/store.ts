@@ -1,6 +1,7 @@
 import { createHash } from "crypto";
 import path from "path";
 import _ from "lodash";
+import { Test } from "testplane";
 
 import type { WorkersRunner } from "./workers/worker";
 import type { Dump, DumpResponse } from "./types";
@@ -10,13 +11,13 @@ export class Store {
     private queryCounter: Map<string, number> | null = null;
 
     constructor(
-        private dumpsDir: string | ((test: Hermione.Test) => string),
+        private dumpsDir: string | ((test: Test) => string),
         private workersRunner: WorkersRunner,
-        private test: Hermione.Test,
+        private test: Test,
         private gzipDumps: boolean,
     ) {}
 
-    public get currentTest(): Hermione.Test {
+    public get currentTest(): Test {
         return this.test;
     }
 

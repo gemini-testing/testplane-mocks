@@ -1,4 +1,4 @@
-export default class HermioneMocksError extends Error {
+export default class TestplaneMocksError extends Error {
     constructor(message: string) {
         super();
 

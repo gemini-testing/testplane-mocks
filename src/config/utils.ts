@@ -1,5 +1,6 @@
 import { option, Parser } from "gemini-configparser";
 import _ from "lodash";
+import { Test } from "testplane";
 
 import { SUPPORTED_RESOURCE_TYPES } from "../constants";
 import { RunMode, MocksPattern } from "../types";
@@ -91,13 +92,13 @@ export const runModeOption = (name: string, defaultValue?: RunMode): Parser<RunM
 
 export const dumpsDirOption = (
     name: string,
-    defaultValue: string | ((test: Hermione.Test) => string),
-): Parser<string | ((test: Hermione.Test) => string)> =>
-    option<string | ((test: Hermione.Test) => string)>({
+    defaultValue: string | ((test: Test) => string),
+): Parser<string | ((test: Test) => string)> =>
+    option<string | ((test: Test) => string)>({
         parseEnv: JSON.parse,
         parseCli: JSON.parse,
         defaultValue,
-        validate: assertType<string | ((test: Hermione.Test) => string)>(
+        validate: assertType<string | ((test: Test) => string)>(
             name,
             isStringOrFunction, // eslint-disable-line indent
             "string or Function", // eslint-disable-line indent
