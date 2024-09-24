@@ -11,13 +11,14 @@ import {
 } from "./utils";
 import { DUMPS_DIR } from "../constants";
 import { MocksPattern, RunMode } from "../types";
+import type { Test } from "testplane";
 
 export type PluginConfig = {
     enabled: boolean;
     patterns: MocksPattern[];
     browsers: string[];
     mode: RunMode;
-    dumpsDir: string | ((test: Hermione.Test) => string);
+    dumpsDir: string | ((test: Test) => string);
     dumpsKey: (requestUrl: string) => string;
     gzipDumps: boolean;
 };
@@ -35,7 +36,7 @@ export function parseConfig(options: PluginConfig): PluginConfig {
             gzipDumps: booleanOption("gzipDumps", true),
         }),
         {
-            envPrefix: "hermione_mocks_",
+            envPrefix: "testplane_mocks_",
             cliPrefix: "--mocks-",
         },
     );

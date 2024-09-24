@@ -1,5 +1,5 @@
 import path from "path";
-import type Hermione from "hermione";
+import type { Test } from "testplane";
 import { Store } from "./store";
 import { Dump, DumpResponse } from "./types";
 import { WorkersRunner } from "./workers/worker";
@@ -8,14 +8,14 @@ type ResponseWithHash = { hash: string; response: DumpResponse };
 
 describe("store", () => {
     let workersRunner: WorkersRunner;
-    let test: Hermione.Test;
+    let test: Test;
     let fResponse: ResponseWithHash;
     let sResponse: ResponseWithHash;
 
     type createStore = (opts?: {
-        dumpsDir?: string | ((test: Hermione.Test) => string);
+        dumpsDir?: string | ((test: Test) => string);
         workersRunner?: WorkersRunner;
-        test?: Hermione.Test;
+        test?: Test;
         gzipDumps?: boolean;
     }) => Store;
 
@@ -69,7 +69,7 @@ describe("store", () => {
         test = {
             fullTitle: jest.fn().mockReturnValue("fullTitle"),
             browserId: "browserId",
-        } as unknown as Hermione.Test;
+        } as unknown as Test;
     });
 
     describe("dumpsDir", () => {
@@ -242,7 +242,7 @@ describe("store", () => {
 
     describe("currentTest", () => {
         it("should return current test", () => {
-            const test = {} as Hermione.Test;
+            const test = {} as Test;
             const store = createStore_({ test });
 
             expect(store.currentTest).toBe(test);

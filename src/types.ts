@@ -1,3 +1,4 @@
+import type { Test } from "testplane";
 import type { Protocol } from "puppeteer-core";
 
 export enum RunMode {
@@ -30,3 +31,5 @@ export interface MocksPattern {
     url: string;
     resources: SupportedResourceType[] | "*";
 }
+
+export type TestWithSessionId = Test & { sessionId: string };

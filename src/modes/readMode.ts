@@ -1,7 +1,7 @@
 import _ from "lodash";
 import type { CDPSession } from "puppeteer-core";
 
-import HermioneMocksError from "../hermioneMocksError";
+import TestplaneMocksError from "../testplaneMocksError";
 import { TEST_MOCKS_ERROR } from "../constants";
 import { mkRequestXHRInterceptor } from "../cdp";
 import { Store } from "../store";
@@ -31,13 +31,13 @@ export async function readMode({ session, patterns, dumpsKey, getStore }: ReadMo
                 });
             } else {
                 const errMessage = `Cache is empty:\nkey=${dumpKey}`;
-                const error = _.get(store.currentTest, TEST_MOCKS_ERROR, new HermioneMocksError(errMessage));
+                const error = _.get(store.currentTest, TEST_MOCKS_ERROR, new TestplaneMocksError(errMessage));
 
                 _.set(store.currentTest, TEST_MOCKS_ERROR, error);
             }
         } catch (err: unknown) {
             const errMessage = (err as Error).message;
-            const error = _.get(store.currentTest, TEST_MOCKS_ERROR, new HermioneMocksError(errMessage));
+            const error = _.get(store.currentTest, TEST_MOCKS_ERROR, new TestplaneMocksError(errMessage));
 
             _.set(store.currentTest, TEST_MOCKS_ERROR, error);
         }

@@ -4,7 +4,7 @@ import _ from "lodash";
 import PQueue from "p-queue";
 import os from "os";
 
-import HermioneMocksError from "./hermioneMocksError";
+import TestplaneMocksError from "./testplaneMocksError";
 import { TARGET_PAGE, TEST_MOCKS_ERROR } from "./constants";
 import { createWorkersRunner } from "./workers";
 import { Store } from "./store";
@@ -12,11 +12,14 @@ import { parseConfig } from "./config";
 import { useModes, readMode, writeMode } from "./modes";
 import type { PluginConfig } from "./config";
 import type { WorkersRunner } from "./workers/worker";
+import type Testplane from "testplane";
+import type { Test } from "testplane";
+import type { TestWithSessionId } from "./types";
 
-export = (hermione: Hermione, opts: PluginConfig): void => {
+export = (testplane: Testplane, opts: PluginConfig): void => {
     const config = parseConfig(opts);
 
-    if (!config.enabled || hermione.isWorker() || _.isEmpty(config.browsers)) {
+    if (!config.enabled || testplane.isWorker() || _.isEmpty(config.browsers)) {
         return;
     }
 
@@ -52,11 +55,11 @@ export = (hermione: Hermione, opts: PluginConfig): void => {
         );
     };
 
-    hermione.on(hermione.events.RUNNER_START, runner => {
+    testplane.on(testplane.events.RUNNER_START, runner => {
         workersRunner = createWorkersRunner(runner);
     });
 
-    hermione.on(hermione.events.SESSION_START, async (browser, { browserId, sessionId }) => {
+    testplane.on(testplane.events.SESSION_START, async (browser, { browserId, sessionId }) => {
         if (!config.browsers.includes(browserId)) {
             return;
         }
@@ -87,7 +90,7 @@ export = (hermione: Hermione, opts: PluginConfig): void => {
                 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                 const test = stores.get(sessionId)!.currentTest;
                 const originalErrorMessage = (originalError as Error).message;
-                const error = new HermioneMocksError(
+                const error = new TestplaneMocksError(
                     `Puppeteer couldn't create CDP session (original error: ${originalErrorMessage})`,
                 );
 
@@ -96,29 +99,29 @@ export = (hermione: Hermione, opts: PluginConfig): void => {
         });
     });
 
-    hermione.on(hermione.events.TEST_BEGIN, test => {
+    testplane.on(testplane.events.TEST_BEGIN, test => {
         if (!config.browsers.includes(test.browserId)) {
             return;
         }
 
         const newStore = new Store(config.dumpsDir, workersRunner, test, config.gzipDumps);
 
-        stores.set(test.sessionId, newStore);
+        stores.set((test as TestWithSessionId).sessionId, newStore);
     });
 
-    hermione.intercept(hermione.events.TEST_PASS, ({ data }) => {
-        return _.get(data, TEST_MOCKS_ERROR) && { event: hermione.events.TEST_FAIL, data };
+    testplane.intercept(testplane.events.TEST_PASS, ({ data }) => {
+        return _.get(data, TEST_MOCKS_ERROR) && { event: testplane.events.TEST_FAIL, data };
     });
 
-    hermione.intercept(hermione.events.TEST_FAIL, ({ data }) => {
+    testplane.intercept(testplane.events.TEST_FAIL, ({ data }) => {
         if (_.get(data, TEST_MOCKS_ERROR)) {
-            const test = data as Hermione.Test;
+            const test = data as Test;
 
             test.err = _.get(data, TEST_MOCKS_ERROR);
         }
     });
 
-    hermione.on(hermione.events.TEST_END, ({ browserId, sessionId }) => {
+    testplane.on(testplane.events.TEST_END, ({ browserId, sessionId }) => {
         if (!config.browsers.includes(browserId)) {
             return;
         }
@@ -135,5 +138,5 @@ export = (hermione: Hermione, opts: PluginConfig): void => {
         );
     });
 
-    hermione.on(hermione.events.RUNNER_END, () => queue.onIdle());
+    testplane.on(testplane.events.RUNNER_END, () => queue.onIdle());
 };
