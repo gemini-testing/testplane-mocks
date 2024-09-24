@@ -1,6 +1,6 @@
 {
     "name": "@testplane/mocks",
-    "version": "0.0.1",
+    "version": "1.0.0",
     "description": "Testplane plugin that allows you to mock HTTP requests. Works only with browsers that support the CDP protocol",
     "main": "./build/index.js",
     "types": "./build/index.d.ts",
