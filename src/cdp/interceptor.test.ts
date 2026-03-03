@@ -1,4 +1,5 @@
 import btoa from "btoa";
+import zlib from "zlib";
 import type { CDPSession } from "puppeteer-core";
 import type { MocksPattern } from "../types";
 import type { ApiType } from "./interceptor";
@@ -153,6 +154,17 @@ describe("cdp/interceptor", () => {
                 });
 
                 const data = await api.getRealResponse("some-id");
+
+                expect(data.toString()).toEqual("data");
+            });
+
+            it("should encode data if there are exist encoding", async () => {
+                session.send.mockResolvedValue({
+                    body: zlib.gzipSync("data"),
+                    base64Encoded: false,
+                });
+
+                const data = await api.getRealResponse("some-id", { "content-encoding": "gzip" });
 
                 expect(data.toString()).toEqual("data");
             });

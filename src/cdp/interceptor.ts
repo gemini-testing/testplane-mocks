@@ -1,5 +1,6 @@
 import btoa from "btoa";
 import type { CDPSession, Protocol } from "puppeteer-core";
+import zlib from "zlib";
 
 import { FetchInterceptionStage } from "./types";
 import { createResponseHeaders } from ".";
@@ -16,7 +17,7 @@ type RespondWithMockParams = {
 
 export type ApiType = {
     respondWithMock: (params: RespondWithMockParams) => Promise<void>;
-    getRealResponse: (requestId: string) => Promise<Buffer>;
+    getRealResponse: (requestId: string, responseHeaders?: Headers) => Promise<Buffer>;
     continueRequest(requestId: string): Promise<void>;
 };
 
@@ -52,7 +53,7 @@ export class CdpInterceptor {
     protected get api(): ApiType {
         return {
             respondWithMock: (params: RespondWithMockParams) => this.respondWithMock(params),
-            getRealResponse: (requestId: string) => this.getRealResponse(requestId),
+            getRealResponse: (requestId: string, headers?: Headers) => this.getRealResponse(requestId, headers),
             continueRequest: (requestId: string) => this.continueRequest(requestId),
         };
     }
@@ -77,11 +78,39 @@ export class CdpInterceptor {
         });
     }
 
-    protected async getRealResponse(requestId: string): Promise<Buffer> {
+    protected async getRealResponse(requestId: string, responseHeaders: Headers = {}): Promise<Buffer> {
         const interceptionResponse = await this.session.send("Fetch.getResponseBody", { requestId });
 
-        const body = Buffer.from(interceptionResponse.body, interceptionResponse.base64Encoded ? "base64" : "utf8");
+        let body = Buffer.from(interceptionResponse.body, interceptionResponse.base64Encoded ? "base64" : "utf8");
+
+        const contentEncoding = responseHeaders["content-encoding"] || responseHeaders["Content-Encoding"];
+
+        if (contentEncoding) {
+            body = this.decompressBody(body, contentEncoding);
+        }
 
         return body;
+    }
+
+    private decompressBody(body: Buffer, encoding: string): Buffer {
+        const normalized = encoding.toLowerCase();
+
+        try {
+            if (normalized.includes("gzip")) {
+                return zlib.gunzipSync(body);
+            }
+
+            if (normalized.includes("deflate")) {
+                return zlib.inflateSync(body);
+            }
+
+            if (normalized.includes("br")) {
+                return zlib.brotliDecompressSync(body);
+            }
+
+            return body;
+        } catch (e) {
+            return body;
+        }
     }
 }

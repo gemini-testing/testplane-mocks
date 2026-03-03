@@ -33,7 +33,7 @@ export async function writeMode({ session, patterns, dumpsKey, getStore }: Write
             const headers = normalizeHeaders(responseHeaders);
             const body = hasNoBody(responseCode)
                 ? ""
-                : await api.getRealResponse(requestId).then(res => res.toString("binary"));
+                : await api.getRealResponse(requestId, headers).then(res => res.toString("binary"));
 
             store.set(dumpKey, { responseCode, headers, body });
 
