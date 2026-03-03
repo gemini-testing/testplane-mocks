@@ -1,12 +1,17 @@
 import btoa from "btoa";
 import type { CDPSession, Protocol } from "puppeteer-core";
 import zlib from "zlib";
+import { promisify } from "util";
 
 import { FetchInterceptionStage } from "./types";
 import { createResponseHeaders } from ".";
 import type { FetchEvent, Headers } from "./types";
 import type { MocksPattern } from "../types";
 import { SUPPORTED_RESOURCE_TYPES } from "../constants";
+
+const gunzip = promisify(zlib.gunzip);
+const inflate = promisify(zlib.inflate);
+const brotliDecompress = promisify(zlib.brotliDecompress);
 
 type RespondWithMockParams = {
     requestId: string;
@@ -86,26 +91,26 @@ export class CdpInterceptor {
         const contentEncoding = responseHeaders["content-encoding"] || responseHeaders["Content-Encoding"];
 
         if (contentEncoding) {
-            body = this.decompressBody(body, contentEncoding);
+            body = await this.decodeBody(body, contentEncoding);
         }
 
         return body;
     }
 
-    private decompressBody(body: Buffer, encoding: string): Buffer {
+    private async decodeBody(body: Buffer, encoding: string): Promise<Buffer> {
         const normalized = encoding.toLowerCase();
 
         try {
             if (normalized.includes("gzip")) {
-                return zlib.gunzipSync(body);
+                return gunzip(body);
             }
 
             if (normalized.includes("deflate")) {
-                return zlib.inflateSync(body);
+                return await inflate(body);
             }
 
             if (normalized.includes("br")) {
-                return zlib.brotliDecompressSync(body);
+                return await brotliDecompress(body);
             }
 
             return body;

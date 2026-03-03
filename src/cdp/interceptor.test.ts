@@ -158,7 +158,7 @@ describe("cdp/interceptor", () => {
                 expect(data.toString()).toEqual("data");
             });
 
-            it("should encode data if there are exist encoding", async () => {
+            it("should decode data if there are exist encoding", async () => {
                 session.send.mockResolvedValue({
                     body: zlib.gzipSync("data"),
                     base64Encoded: false,
