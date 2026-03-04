@@ -3,3 +3,4 @@ coverage
 build
 build-spec
 .DS_Store
+.idea

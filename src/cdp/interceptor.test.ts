@@ -1,8 +1,21 @@
 import btoa from "btoa";
+import zlib from "zlib";
 import type { CDPSession } from "puppeteer-core";
 import type { MocksPattern } from "../types";
 import type { ApiType } from "./interceptor";
 import { SUPPORTED_RESOURCE_TYPES } from "../constants";
+
+jest.mock("zlib", () => {
+    const actualZlib = jest.requireActual("zlib");
+
+    return {
+        ...actualZlib,
+        gunzip: jest.fn(actualZlib.gunzip),
+        inflate: jest.fn(actualZlib.inflate),
+        brotliDecompress: jest.fn(actualZlib.brotliDecompress),
+    };
+});
+
 import { CdpInterceptor } from "./interceptor";
 import { FetchInterceptionStage } from "./types";
 
@@ -153,6 +166,54 @@ describe("cdp/interceptor", () => {
                 });
 
                 const data = await api.getRealResponse("some-id");
+
+                expect(data.toString()).toEqual("data");
+            });
+        });
+
+        describe("getRealResponse: should decode data if there are exist encoding", () => {
+            it("gzip", async () => {
+                session.send.mockResolvedValue({
+                    body: zlib.gzipSync("data"),
+                    base64Encoded: false,
+                });
+
+                const data = await api.getRealResponse("some-id", { "content-encoding": "gzip" });
+
+                expect(data.toString()).toEqual("data");
+            });
+
+            it("fake gzip", async () => {
+                session.send.mockResolvedValue({
+                    body: "data",
+                    base64Encoded: false,
+                });
+
+                const data = await api.getRealResponse("some-id", { "content-encoding": "gzip" });
+
+                expect(zlib.gunzip).not.toHaveBeenCalled();
+
+                expect(data.toString()).toEqual("data");
+            });
+
+            it("br", async () => {
+                session.send.mockResolvedValue({
+                    body: zlib.brotliCompressSync("data"),
+                    base64Encoded: false,
+                });
+
+                const data = await api.getRealResponse("some-id", { "content-encoding": "br" });
+
+                expect(data.toString()).toEqual("data");
+            });
+
+            it("deflate", async () => {
+                session.send.mockResolvedValue({
+                    body: zlib.deflateSync("data"),
+                    base64Encoded: false,
+                });
+
+                const data = await api.getRealResponse("some-id", { "content-encoding": "deflate" });
 
                 expect(data.toString()).toEqual("data");
             });
