@@ -97,11 +97,19 @@ export class CdpInterceptor {
         return body;
     }
 
+    private isGzip(buffer: Buffer): boolean {
+        return buffer.length >= 2 && buffer[0] === 0x1f && buffer[1] === 0x8b;
+    }
+
     private async decodeBody(body: Buffer, encoding: string): Promise<Buffer> {
         const normalized = encoding.toLowerCase();
 
         try {
             if (normalized.includes("gzip")) {
+                if (!this.isGzip(body)) {
+                    return body;
+                }
+
                 return gunzip(body);
             }
 
