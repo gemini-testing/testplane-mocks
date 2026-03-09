@@ -18,7 +18,8 @@
         "reformat": "eslint src --ext .ts --fix && prettier --write 'src/**/*.ts' '**/*.json'",
         "style": "prettier --check 'src/**/*.ts' '**/*.json'",
         "eslint": "eslint src --ext .ts",
-        "unit": "jest"
+        "unit": "jest",
+        "release": "standard-version"
     },
     "repository": {
         "type": "git",
@@ -55,7 +56,8 @@
         "testplane": "^8.20.4",
         "ts-jest": "^27.1.5",
         "ts-node": "^10.9.1",
-        "typescript": "^4.4.4"
+        "typescript": "^4.4.4",
+        "standard-version": "^4.0.0"
     },
     "dependencies": {
         "btoa": "^1.2.1",
