@@ -171,18 +171,7 @@ describe("cdp/interceptor", () => {
             });
         });
 
-        describe("getRealResponse: should decode data if there are exist encoding", () => {
-            it("gzip", async () => {
-                session.send.mockResolvedValue({
-                    body: zlib.gzipSync("data"),
-                    base64Encoded: false,
-                });
-
-                const data = await api.getRealResponse("some-id", { "content-encoding": "gzip" });
-
-                expect(data.toString()).toEqual("data");
-            });
-
+        describe.only("getRealResponse: should decode data if there are exist encoding", () => {
             it("fake gzip", async () => {
                 session.send.mockResolvedValue({
                     body: "data",
@@ -192,6 +181,17 @@ describe("cdp/interceptor", () => {
                 const data = await api.getRealResponse("some-id", { "content-encoding": "gzip" });
 
                 expect(zlib.gunzip).not.toHaveBeenCalled();
+
+                expect(data.toString()).toEqual("data");
+            });
+
+            it("gzip", async () => {
+                session.send.mockResolvedValue({
+                    body: zlib.gzipSync("data"),
+                    base64Encoded: false,
+                });
+
+                const data = await api.getRealResponse("some-id", { "content-encoding": "gzip" });
 
                 expect(data.toString()).toEqual("data");
             });
