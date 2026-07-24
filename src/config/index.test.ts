@@ -14,6 +14,7 @@ describe("config", () => {
             mode: RunMode.Play,
             dumpsDir: DUMPS_DIR,
             gzipDumps: true,
+            softMocksErrors: false,
         });
     });
 
@@ -133,6 +134,18 @@ describe("config", () => {
         it("should parse option", () => {
             expect(parseConfig({ gzipDumps: true })).toMatchObject({
                 gzipDumps: true,
+            });
+        });
+    });
+
+    describe("softMocksErrors", () => {
+        it("should throw if it is not type of Boolean", () => {
+            expect(() => parseConfig({ softMocksErrors: "asd" })).toThrow(/must be a boolean/);
+        });
+
+        it("should parse option", () => {
+            expect(parseConfig({ softMocksErrors: true })).toMatchObject({
+                softMocksErrors: true,
             });
         });
     });

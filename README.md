@@ -28,6 +28,9 @@ npm install @testplane/mocks --save-dev
    - `(test: Test) => string`: (ex: `path.join(path.dirname(test.file), "testplane-dumps")`. `testplane-dumps` directories will be located next to each Testplane test). Saves tests' dumps to directories by path, returned by the function
 * **dumpsKey** (optional) `(requestUrl: string) => string` - function to create dumps key from request url. Сan be used to remove query parameters that unique every time. If you dont remove unique query params, you will encounter an error `Cache is empty: key=...` on `play` mode.
 * **gzipDumps** (optional) `Boolean` - enable/disable dump compressing. By default dumps are written and read in compressed form
+* **softMocksErrors** (optional) `Boolean` - soft handling of mocks errors (e.g. `Cache is empty: key=...`). Default - `false`. By default a mocks error fails an otherwise-passing test and replaces the error of a failing one. When set to `true`:
+   - a passing test is **not** failed because of a mocks error;
+   - a failing test keeps its real error as the top-level one, and the mocks error is attached as the **deepest `cause`**, so it stays visible without hiding the real failure reason.
 
 Also there is ability to override plugin parameters by CLI options or environment variables (see [configparser](https://github.com/gemini-testing/configparser)).
 
