@@ -9,6 +9,7 @@ import { TARGET_PAGE, TEST_MOCKS_ERROR } from "./constants";
 import { createWorkersRunner } from "./workers";
 import { Store } from "./store";
 import { parseConfig } from "./config";
+import { attachErrorAsDeepestCause } from "./utils";
 import { useModes, readMode, writeMode } from "./modes";
 import type { PluginConfig } from "./config";
 import type { WorkersRunner } from "./workers/worker";
@@ -110,14 +111,27 @@ export = (testplane: Testplane, opts: PluginConfig): void => {
     });
 
     testplane.intercept(testplane.events.TEST_PASS, ({ data }) => {
-        return _.get(data, TEST_MOCKS_ERROR) && { event: testplane.events.TEST_FAIL, data };
+        // In soft mode a mocks error must not turn a passing test into a failing one.
+        const shouldFail = Boolean(_.get(data, TEST_MOCKS_ERROR)) && !config.softMocksErrors;
+
+        return shouldFail ? { event: testplane.events.TEST_FAIL, data } : undefined;
     });
 
     testplane.intercept(testplane.events.TEST_FAIL, ({ data }) => {
-        if (_.get(data, TEST_MOCKS_ERROR)) {
-            const test = data as Test;
+        const mocksError = _.get(data, TEST_MOCKS_ERROR) as Error | undefined;
 
-            test.err = _.get(data, TEST_MOCKS_ERROR);
+        if (!mocksError) {
+            return;
+        }
+
+        const test = data as Test;
+
+        // In soft mode keep the real failure as the top-level error and hang the mocks
+        // error at the deepest cause; otherwise preserve the legacy behavior and overwrite.
+        if (config.softMocksErrors && test.err) {
+            attachErrorAsDeepestCause(test.err as Error, mocksError);
+        } else {
+            test.err = mocksError;
         }
     });
 

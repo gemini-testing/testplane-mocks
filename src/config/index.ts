@@ -21,6 +21,7 @@ export type PluginConfig = {
     dumpsDir: string | ((test: Test) => string);
     dumpsKey: (requestUrl: string) => string;
     gzipDumps: boolean;
+    softMocksErrors: boolean;
 };
 
 export function parseConfig(options: PluginConfig): PluginConfig {
@@ -34,6 +35,7 @@ export function parseConfig(options: PluginConfig): PluginConfig {
             dumpsDir: dumpsDirOption("dumpsDir", DUMPS_DIR),
             dumpsKey: dumpsKeyOption("dumpsKey", _.identity),
             gzipDumps: booleanOption("gzipDumps", true),
+            softMocksErrors: booleanOption("softMocksErrors", false),
         }),
         {
             envPrefix: "testplane_mocks_",
